@@ -7,23 +7,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const form = await req.formData();
-  const file = form.get("file") as File | null;
-
-  if (!file) {
-    return NextResponse.json({ error: "No se recibió archivo" }, { status: 400 });
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json(
+      { error: "Vercel Blob no configurado. Agrega BLOB_READ_WRITE_TOKEN al .env.local" },
+      { status: 500 }
+    );
   }
 
-  if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Solo se aceptan imágenes" }, { status: 400 });
+  try {
+    const form = await req.formData();
+    const file = form.get("file") as File | null;
+
+    if (!file) {
+      return NextResponse.json({ error: "No se recibió archivo" }, { status: 400 });
+    }
+    if (!file.type.startsWith("image/")) {
+      return NextResponse.json({ error: "Solo se aceptan imágenes" }, { status: 400 });
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: "Máximo 5MB por imagen" }, { status: 400 });
+    }
+
+    const filename = `sneakers/${Date.now()}-${file.name.replace(/[^a-z0-9.\-_]/gi, "_")}`;
+    const blob = await put(filename, file, { access: "public" });
+
+    return NextResponse.json({ url: blob.url });
+  } catch (err) {
+    console.error("Upload error:", err);
+    return NextResponse.json({ error: "Error al subir la imagen" }, { status: 500 });
   }
-
-  if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "Máximo 5MB por imagen" }, { status: 400 });
-  }
-
-  const filename = `sneakers/${Date.now()}-${file.name.replace(/[^a-z0-9.\-_]/gi, "_")}`;
-  const blob = await put(filename, file, { access: "public" });
-
-  return NextResponse.json({ url: blob.url });
 }
