@@ -19,3 +19,6 @@ Thumbs.db
 
 # prisma
 prisma/*.db
+
+.vercel
+.env*.local
