@@ -25,6 +25,7 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
   const pct        = totalPairs > 0 ? Math.round((soldPairs / totalPairs) * 100) : 0;
 
   return (
+    <>
     <div
       className="relative bg-card-gradient border border-gucha-border rounded-2xl overflow-hidden mb-3 shadow-card animate-fade-up"
       style={{ animationDelay: `${index * 60}ms` }}
@@ -168,5 +169,6 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
         onClose={() => setLightbox(false)}
       />
     )}
+    </>
   );
 }
