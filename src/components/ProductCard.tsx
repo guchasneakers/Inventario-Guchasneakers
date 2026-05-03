@@ -46,7 +46,7 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
                 src={product.imageUrl}
                 alt={product.name}
                 fill
-                className="object-contain p-1"
+                className="object-cover"
                 unoptimized
               />
             ) : (

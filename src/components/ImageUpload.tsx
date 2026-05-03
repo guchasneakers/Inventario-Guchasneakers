@@ -101,7 +101,7 @@ export default function ImageUpload({ currentUrl, onChange }: Props) {
           ].join(" ")}
         >
           {preview && !uploading && (
-            <img src={preview} alt="preview" className="absolute inset-0 w-full h-full object-contain p-2" />
+            <img src={preview} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
           )}
           {!preview && !uploading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -143,7 +143,7 @@ export default function ImageUpload({ currentUrl, onChange }: Props) {
               <img
                 src={urlInput}
                 alt="preview"
-                className="w-full h-full object-contain p-2"
+                className="w-full h-full object-cover"
                 onError={() => setError("No se pudo cargar la imagen desde ese enlace")}
                 onLoad={() => setError("")}
               />
