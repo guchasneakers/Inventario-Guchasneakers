@@ -140,7 +140,7 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
         {/* size pills */}
         {product.sizes.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {product.sizes.map((size) => (
+            {[...product.sizes].sort((a, b) => parseFloat(a.size) - parseFloat(b.size)).map((size) => (
               <SizePill
                 key={size.id}
                 size={size}
