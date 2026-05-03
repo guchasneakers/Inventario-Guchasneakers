@@ -1,0 +1,21 @@
+# deps
+node_modules/
+
+# next
+.next/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# build
+dist/
+
+# os
+.DS_Store
+Thumbs.db
+
+# prisma
+prisma/*.db
