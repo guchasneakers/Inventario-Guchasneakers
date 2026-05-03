@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
-      { error: "Vercel Blob no configurado. Agrega BLOB_READ_WRITE_TOKEN al .env.local" },
+      { error: "Blob storage no configurado (falta BLOB_READ_WRITE_TOKEN)" },
       { status: 500 }
     );
   }
@@ -32,8 +32,17 @@ export async function POST(req: NextRequest) {
     const blob = await put(filename, file, { access: "public" });
 
     return NextResponse.json({ url: blob.url });
-  } catch (err) {
-    console.error("Upload error:", err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+
+    if (msg.includes("private store")) {
+      return NextResponse.json(
+        { error: "El Blob Store está en modo privado. Cámbialo a público en el dashboard de Vercel → Storage → tu store → Settings → Access." },
+        { status: 500 }
+      );
+    }
+
+    console.error("Upload error:", msg);
     return NextResponse.json({ error: "Error al subir la imagen" }, { status: 500 });
   }
 }
