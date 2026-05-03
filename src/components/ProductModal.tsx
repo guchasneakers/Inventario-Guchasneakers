@@ -133,7 +133,7 @@ export default function ProductModal({ product, onClose, onSave }: Props) {
 
             {form.sizes.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2.5 p-3 bg-[#0d0d0d] rounded-xl border border-gucha-border">
-                {form.sizes.map((s, i) => (
+                {[...form.sizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number)).map((s, i) => (
                   <div key={i} className="flex items-center gap-1.5 bg-gucha-dark border border-gucha-border rounded-lg pl-2.5 pr-1.5 py-1">
                     <span className="text-[11px] text-white font-semibold">
                       {s.number}
