@@ -89,6 +89,33 @@ export default function HomePage() {
   const [editProduct, setEditProduct] = useState<ProductData | null>(null);
   const [toast,       setToast]       = useState("");
 
+  // { sizeId → { productName, sizeNumber } }
+  const [selection, setSelection] = useState<Record<number, { productName: string; sizeNumber: string }>>({});
+
+  function handleSelectSize(productId: number, sizeId: number) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    const size = product.sizes.find((s) => s.id === sizeId);
+    if (!size) return;
+    setSelection((prev) => {
+      if (prev[sizeId]) {
+        const next = { ...prev };
+        delete next[sizeId];
+        return next;
+      }
+      return { ...prev, [sizeId]: { productName: product.name, sizeNumber: size.number } };
+    });
+  }
+
+  const selectionEntries = Object.values(selection);
+  const hasSelection = selectionEntries.length > 0;
+
+  function buildWaUrl() {
+    const parts = selectionEntries.map((e) => `modelo ${e.productName}, size ${e.sizeNumber}`);
+    const msg = `Quisiera información sobre el ${parts.join(", ")}.`;
+    return `https://wa.me/13478180549?text=${encodeURIComponent(msg)}`;
+  }
+
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setIsAdmin(d.isAdmin ?? false));
   }, []);
@@ -175,15 +202,25 @@ export default function HomePage() {
       <Stats stats={stats} />
       <SearchBar value={search} onChange={setSearch} />
       {/* WhatsApp — solo desktop sidebar */}
-      <a
-        href="https://wa.me/13478180549"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="hidden md:flex items-center justify-center gap-2 mt-3 w-full bg-[#128c47] hover:bg-[#25d366] active:scale-95 text-white text-[12px] font-bold py-2.5 rounded-xl shadow-[0_4px_16px_rgba(18,140,71,0.4)] transition-all"
-      >
-        {waSvg}
-        Ordena ahora
-      </a>
+      {hasSelection ? (
+        <a
+          href={buildWaUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden md:flex items-center justify-center gap-2 mt-3 w-full bg-[#128c47] hover:bg-[#25d366] active:scale-95 text-white text-[12px] font-bold py-2.5 rounded-xl shadow-[0_4px_16px_rgba(18,140,71,0.4)] transition-all"
+        >
+          {waSvg}
+          Ordena ahora
+          <span className="ml-1 bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+            {selectionEntries.length}
+          </span>
+        </a>
+      ) : (
+        <div className="hidden md:flex items-center justify-center gap-2 mt-3 w-full bg-[#128c47]/30 border border-gucha-green/10 text-gucha-muted text-[12px] font-bold py-2.5 rounded-xl cursor-default select-none">
+          {waSvg}
+          Selecciona tallas
+        </div>
+      )}
     </>
   );
 
@@ -230,6 +267,8 @@ export default function HomePage() {
           onToggleSize={handleToggleSize}
           onEdit={openEdit}
           onDelete={handleDelete}
+          selectedSizes={product.sizes.filter((s) => selection[s.id]).map((s) => s.id)}
+          onSelectSize={!isAdmin ? handleSelectSize : undefined}
         />
       ))}
     </div>
@@ -313,15 +352,25 @@ export default function HomePage() {
       </div>
 
       {/* ── FAB WhatsApp — solo mobile ─── */}
-      <a
-        href="https://wa.me/13478180549"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="md:hidden fixed bottom-6 right-5 z-50 flex items-center gap-2 bg-[#128c47] hover:bg-[#25d366] active:scale-95 text-white text-[12px] font-bold px-4 py-3 rounded-2xl shadow-[0_4px_20px_rgba(18,140,71,0.5)] transition-all"
-      >
-        {waSvg}
-        Ordena ahora
-      </a>
+      {hasSelection ? (
+        <a
+          href={buildWaUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="md:hidden fixed bottom-6 right-5 z-50 flex items-center gap-2 bg-[#128c47] hover:bg-[#25d366] active:scale-95 text-white text-[12px] font-bold px-4 py-3 rounded-2xl shadow-[0_4px_20px_rgba(18,140,71,0.5)] transition-all"
+        >
+          {waSvg}
+          Ordena ahora
+          <span className="bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+            {selectionEntries.length}
+          </span>
+        </a>
+      ) : (
+        <div className="md:hidden fixed bottom-6 right-5 z-50 flex items-center gap-2 bg-[#128c47]/30 border border-gucha-green/20 text-gucha-muted text-[12px] font-bold px-4 py-3 rounded-2xl">
+          {waSvg}
+          Ordena ahora
+        </div>
+      )}
 
       {/* ── FAB mobile — solo admin ─── */}
       {isAdmin && (

@@ -7,15 +7,17 @@ import SizePill from "./SizePill";
 import ImageLightbox from "./ImageLightbox";
 
 interface Props {
-  product:      ProductData;
-  index:        number;
-  isAdmin:      boolean;
-  onToggleSize: (productId: number, sizeId: number, sold: number) => Promise<void>;
-  onEdit:       (product: ProductData) => void;
-  onDelete:     (productId: number) => void;
+  product:        ProductData;
+  index:          number;
+  isAdmin:        boolean;
+  onToggleSize:   (productId: number, sizeId: number, sold: number) => Promise<void>;
+  onEdit:         (product: ProductData) => void;
+  onDelete:       (productId: number) => void;
+  selectedSizes?: number[];
+  onSelectSize?:  (productId: number, sizeId: number) => void;
 }
 
-export default function ProductCard({ product, index, isAdmin, onToggleSize, onEdit, onDelete }: Props) {
+export default function ProductCard({ product, index, isAdmin, onToggleSize, onEdit, onDelete, selectedSizes = [], onSelectSize }: Props) {
   const [lightbox, setLightbox] = useState(false);
 
   const totalPairs = product.sizes.reduce((acc, s) => acc + s.quantity, 0);
@@ -146,6 +148,8 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
                 size={size}
                 isAdmin={isAdmin}
                 onToggle={(sizeId, sold) => onToggleSize(product.id, sizeId, sold)}
+                selected={selectedSizes.includes(size.id)}
+                onSelect={(sizeId) => onSelectSize?.(product.id, sizeId)}
               />
             ))}
           </div>
