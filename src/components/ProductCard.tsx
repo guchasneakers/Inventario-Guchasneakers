@@ -140,9 +140,9 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
         )}
 
         {/* admin hint */}
-        {!isAdmin && product.sizes.length > 0 && (
+        {isAdmin && product.sizes.length > 0 && (
           <p className="text-[9px] text-gucha-muted/50 mt-2 tracking-wide">
-            Toca las tallas solo disponible para admin
+            Toca las tallas para marcar vendido
           </p>
         )}
       </div>
