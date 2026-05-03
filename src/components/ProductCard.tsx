@@ -157,10 +157,15 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
           <p className="text-[10px] text-gucha-muted italic">Sin tallas registradas</p>
         )}
 
-        {/* admin hint */}
+        {/* hints */}
         {isAdmin && product.sizes.length > 0 && (
           <p className="text-[9px] text-gucha-muted/50 mt-2 tracking-wide">
             Toca las tallas para marcar vendido
+          </p>
+        )}
+        {!isAdmin && product.sizes.some((s) => s.sold < s.quantity) && (
+          <p className="text-[9px] text-gucha-green-light/50 mt-2 tracking-wide">
+            Toca las tallas que te interesan para ordenar
           </p>
         )}
       </div>
