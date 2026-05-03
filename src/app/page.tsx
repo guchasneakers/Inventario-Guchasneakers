@@ -6,6 +6,7 @@ import Stats        from "@/components/Stats";
 import SearchBar    from "@/components/SearchBar";
 import ProductCard  from "@/components/ProductCard";
 import ProductModal from "@/components/ProductModal";
+import LoginModal   from "@/components/LoginModal";
 import type { ProductData, ProductFormData, Stats as StatsType } from "@/types";
 
 function computeStats(products: ProductData[]): StatsType {
@@ -17,12 +18,21 @@ function computeStats(products: ProductData[]): StatsType {
 }
 
 export default function HomePage() {
-  const [products,    setProducts]    = useState<ProductData[]>([]);
-  const [search,      setSearch]      = useState("");
-  const [loading,     setLoading]     = useState(true);
-  const [modalOpen,   setModalOpen]   = useState(false);
-  const [editProduct, setEditProduct] = useState<ProductData | null>(null);
-  const [toast,       setToast]       = useState("");
+  const [products,      setProducts]      = useState<ProductData[]>([]);
+  const [search,        setSearch]        = useState("");
+  const [loading,       setLoading]       = useState(true);
+  const [isAdmin,       setIsAdmin]       = useState(false);
+  const [showLogin,     setShowLogin]     = useState(false);
+  const [modalOpen,     setModalOpen]     = useState(false);
+  const [editProduct,   setEditProduct]   = useState<ProductData | null>(null);
+  const [toast,         setToast]         = useState("");
+
+  // Check admin session on mount
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setIsAdmin(d.isAdmin ?? false));
+  }, []);
 
   const fetchProducts = useCallback(async (q = "") => {
     const res  = await fetch(`/api/products${q ? `?search=${encodeURIComponent(q)}` : ""}`);
@@ -40,6 +50,12 @@ export default function HomePage() {
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(""), 2200);
+  }
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setIsAdmin(false);
+    showToast("Sesión cerrada");
   }
 
   async function handleSave(data: ProductFormData, id?: number) {
@@ -81,8 +97,8 @@ export default function HomePage() {
     );
   }
 
-  function openAdd()                    { setEditProduct(null);    setModalOpen(true); }
-  function openEdit(p: ProductData)     { setEditProduct(p);       setModalOpen(true); }
+  function openAdd()                { setEditProduct(null); setModalOpen(true); }
+  function openEdit(p: ProductData) { setEditProduct(p);    setModalOpen(true); }
 
   const stats = computeStats(products);
 
@@ -90,14 +106,32 @@ export default function HomePage() {
     <main className="min-h-screen bg-black pb-24">
       <div className="max-w-md mx-auto">
 
-        {/* ── HERO HEADER ─────────────────────────────── */}
+        {/* ── HEADER ──────────────────────────────────── */}
         <div className="px-5">
           <GuchaLogo />
 
-          {/* tagline */}
-          <p className="text-center text-[9px] font-bold text-gucha-muted tracking-[0.4em] mb-6 uppercase">
-            Inventario · Mayo 2026
-          </p>
+          {/* tagline + admin bar */}
+          <div className="flex items-center justify-between -mt-2 mb-6">
+            <p className="text-[9px] font-bold text-gucha-muted tracking-[0.4em] uppercase">
+              Inventario · Mayo 2026
+            </p>
+            {isAdmin ? (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 text-[9px] font-bold text-gucha-muted hover:text-gucha-red-light border border-gucha-border rounded-full px-3 py-1 transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-gucha-green-light inline-block" />
+                Admin · Salir
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLogin(true)}
+                className="text-[9px] font-bold text-gucha-muted hover:text-white border border-gucha-border rounded-full px-3 py-1 transition-colors tracking-wide"
+              >
+                Admin
+              </button>
+            )}
+          </div>
 
           {/* stats */}
           <Stats stats={stats} />
@@ -111,25 +145,24 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <div className="w-[3px] h-4 bg-red-gradient rounded-full" />
             <span className="text-[10px] font-bold text-gucha-subtle tracking-[0.25em]">
-              {search ? `RESULTADOS` : `COLECCIÓN`}
+              {search ? "RESULTADOS" : "COLECCIÓN"}
             </span>
             {!loading && (
-              <span className="text-[9px] text-gucha-muted">
-                ({products.length})
-              </span>
+              <span className="text-[9px] text-gucha-muted">({products.length})</span>
             )}
           </div>
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-1.5 text-[10px] font-bold text-gucha-green-light bg-gucha-green-dark/50 border border-gucha-green/20 rounded-lg px-3 py-1.5 hover:bg-gucha-green/20 transition-colors tracking-wide"
-          >
-            <span className="text-sm leading-none">+</span> Agregar
-          </button>
+          {isAdmin && (
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-1.5 text-[10px] font-bold text-gucha-green-light bg-gucha-green-dark/50 border border-gucha-green/20 rounded-lg px-3 py-1.5 hover:bg-gucha-green/20 transition-colors tracking-wide"
+            >
+              <span className="text-sm leading-none">+</span> Agregar
+            </button>
+          )}
         </div>
 
         {/* ── PRODUCT LIST ────────────────────────────── */}
         <div className="px-5">
-          {/* skeleton loader */}
           {loading && (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
@@ -138,7 +171,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* empty state */}
           {!loading && products.length === 0 && (
             <div className="text-center py-16">
               <div className="text-5xl mb-4 opacity-20">👟</div>
@@ -146,12 +178,12 @@ export default function HomePage() {
                 {search ? "Sin resultados" : "Inventario vacío"}
               </p>
               <p className="text-gucha-muted text-[11px] mb-6">
-                {search ? `No se encontró "${search}"` : "Agrega tu primer modelo para empezar"}
+                {search ? `No se encontró "${search}"` : "El inventario está vacío por el momento"}
               </p>
-              {!search && (
+              {!search && isAdmin && (
                 <button
                   onClick={openAdd}
-                  className="text-[11px] font-bold text-gucha-green-light border border-gucha-green/30 bg-gucha-green-dark/40 rounded-xl px-5 py-2.5 hover:bg-gucha-green/20 transition-colors tracking-wide"
+                  className="text-[11px] font-bold text-gucha-green-light border border-gucha-green/30 bg-gucha-green-dark/40 rounded-xl px-5 py-2.5 hover:bg-gucha-green/20 transition-colors"
                 >
                   + Nuevo producto
                 </button>
@@ -159,12 +191,12 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* cards */}
           {products.map((product, i) => (
             <ProductCard
               key={product.id}
               product={product}
               index={i}
+              isAdmin={isAdmin}
               onToggleSize={handleToggleSize}
               onEdit={openEdit}
               onDelete={handleDelete}
@@ -186,14 +218,16 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* ── FAB ─────────────────────────────────────── */}
-      <button
-        onClick={openAdd}
-        className="fixed bottom-6 right-5 w-14 h-14 bg-red-gradient rounded-2xl shadow-red-glow flex items-center justify-center text-white text-2xl font-light hover:opacity-90 active:scale-95 transition-all z-40"
-        title="Agregar producto"
-      >
-        +
-      </button>
+      {/* ── FAB — solo admin ────────────────────────── */}
+      {isAdmin && (
+        <button
+          onClick={openAdd}
+          className="fixed bottom-6 right-5 w-14 h-14 bg-red-gradient rounded-2xl shadow-red-glow flex items-center justify-center text-white text-2xl font-light hover:opacity-90 active:scale-95 transition-all z-40"
+          title="Agregar producto"
+        >
+          +
+        </button>
+      )}
 
       {/* ── TOAST ───────────────────────────────────── */}
       {toast && (
@@ -205,8 +239,15 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── MODAL ───────────────────────────────────── */}
-      {modalOpen && (
+      {/* ── MODALS ──────────────────────────────────── */}
+      {showLogin && (
+        <LoginModal
+          onSuccess={() => { setIsAdmin(true); showToast("Bienvenido, admin"); }}
+          onClose={() => setShowLogin(false)}
+        />
+      )}
+
+      {modalOpen && isAdmin && (
         <ProductModal
           product={editProduct}
           onClose={() => setModalOpen(false)}

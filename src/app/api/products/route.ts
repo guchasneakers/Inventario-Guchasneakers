@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isAdminRequest } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,6 +22,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
   try {
     const body = await req.json();
     const { modelNum, name, description, price, imageUrl, sizes } = body;
@@ -31,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const product = await prisma.product.create({
       data: {
-        modelNum: modelNum?.trim() ?? "",
+        modelNum:    modelNum?.trim() ?? "",
         name:        name.trim(),
         description: description?.trim() || null,
         price:       price != null && price !== "" ? Number(price) : null,
