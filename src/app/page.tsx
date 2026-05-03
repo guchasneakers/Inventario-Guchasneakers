@@ -111,7 +111,7 @@ export default function HomePage() {
   const hasSelection = selectionEntries.length > 0;
 
   function buildWaUrl() {
-    const parts = selectionEntries.map((e) => `modelo ${e.productName}, size ${e.sizeNumber}`);
+    const parts = selectionEntries.map((e) => `modelo ${e.productName} [size ${e.sizeNumber}]`);
     const msg = `Quisiera información sobre el ${parts.join(", ")}.`;
     return `https://wa.me/13478180549?text=${encodeURIComponent(msg)}`;
   }
