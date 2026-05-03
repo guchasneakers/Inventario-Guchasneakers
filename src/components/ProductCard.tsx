@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import type { ProductData } from "@/types";
 import SizePill from "./SizePill";
+import ImageLightbox from "./ImageLightbox";
 
 interface Props {
   product:      ProductData;
@@ -14,6 +16,8 @@ interface Props {
 }
 
 export default function ProductCard({ product, index, isAdmin, onToggleSize, onEdit, onDelete }: Props) {
+  const [lightbox, setLightbox] = useState(false);
+
   const totalPairs = product.sizes.reduce((acc, s) => acc + s.quantity, 0);
   const soldPairs  = product.sizes.reduce((acc, s) => acc + s.sold,     0);
   const available  = totalPairs - soldPairs;
@@ -39,16 +43,25 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
         {/* top row */}
         <div className="flex gap-3.5 items-start mb-3">
 
-          {/* image */}
-          <div className="relative w-[100px] h-[82px] bg-[#0d0d0d] rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-gucha-border/50">
+          {/* image — clickeable para ver en grande */}
+          <div
+            onClick={() => product.imageUrl && setLightbox(true)}
+            className={`relative w-[100px] h-[82px] bg-[#0d0d0d] rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-gucha-border/50 group ${product.imageUrl ? "cursor-zoom-in" : ""}`}
+          >
             {product.imageUrl ? (
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+              <>
+                <Image
+                  src={product.imageUrl}
+                  alt={product.name}
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  unoptimized
+                />
+                {/* hover hint */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-lg">🔍</span>
+                </div>
+              </>
             ) : (
               <span className="text-2xl opacity-30">👟</span>
             )}
@@ -147,5 +160,13 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
         )}
       </div>
     </div>
+
+    {lightbox && product.imageUrl && (
+      <ImageLightbox
+        src={product.imageUrl}
+        alt={product.name}
+        onClose={() => setLightbox(false)}
+      />
+    )}
   );
 }
