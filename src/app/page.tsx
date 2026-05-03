@@ -317,7 +317,7 @@ export default function HomePage() {
         href="https://wa.me/13478180549"
         target="_blank"
         rel="noopener noreferrer"
-        className="md:hidden fixed bottom-6 left-5 z-40 flex items-center gap-2 bg-[#128c47] hover:bg-[#25d366] active:scale-95 text-white text-[12px] font-bold px-4 py-3 rounded-2xl shadow-[0_4px_20px_rgba(18,140,71,0.5)] transition-all"
+        className="md:hidden fixed bottom-6 right-5 z-50 flex items-center gap-2 bg-[#128c47] hover:bg-[#25d366] active:scale-95 text-white text-[12px] font-bold px-4 py-3 rounded-2xl shadow-[0_4px_20px_rgba(18,140,71,0.5)] transition-all"
       >
         {waSvg}
         Ordena ahora
@@ -326,7 +326,7 @@ export default function HomePage() {
       {/* ── FAB mobile — solo admin ─── */}
       {isAdmin && (
         <button onClick={openAdd}
-          className="md:hidden fixed bottom-6 right-5 w-14 h-14 bg-red-gradient rounded-2xl shadow-red-glow flex items-center justify-center text-white text-2xl hover:opacity-90 active:scale-95 transition-all z-40">
+          className="md:hidden fixed bottom-24 right-5 w-14 h-14 bg-red-gradient rounded-2xl shadow-red-glow flex items-center justify-center text-white text-2xl hover:opacity-90 active:scale-95 transition-all z-40">
           +
         </button>
       )}
