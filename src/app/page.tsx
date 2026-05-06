@@ -295,6 +295,15 @@ export default function HomePage() {
     showToast("Venta revertida");
   }
 
+  function handleSaleEdited(sizeId: number, sold: number, revenue: number) {
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (!p.sizes.some((s) => s.id === sizeId)) return p;
+        return { ...p, sizes: p.sizes.map((s) => s.id === sizeId ? { ...s, sold, revenue } : s) };
+      })
+    );
+  }
+
   function handleAdminSelectSize(productId: number, sizeId: number) {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
@@ -584,7 +593,7 @@ export default function HomePage() {
 
           {/* ── Ventas ── */}
           {viewMode === "sales" && (
-            <SalesRegister onRevert={handleRevertSale} />
+            <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} />
           )}
 
           {/* ── Inventario ── */}
@@ -680,7 +689,7 @@ export default function HomePage() {
 
         {/* ── Ventas (mobile) ── */}
         {viewMode === "sales" && (
-          <SalesRegister onRevert={handleRevertSale} />
+          <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} />
         )}
 
         {/* ── Inventario (mobile) ── */}
