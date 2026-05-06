@@ -11,6 +11,7 @@ interface Props {
   product:             ProductData;
   index:               number;
   isAdmin:             boolean;
+  editMode?:           boolean;
   onSell:              (productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) => Promise<void>;
   onEdit:              (product: ProductData) => void;
   onDelete:            (productId: number) => void;
@@ -35,7 +36,7 @@ function EyeIcon({ open }: { open: boolean }) {
 }
 
 export default function ProductCard({
-  product, index, isAdmin, onSell, onEdit, onDelete,
+  product, index, isAdmin, editMode = false, onSell, onEdit, onDelete,
   onToggleHidden, onToggleSizeHidden,
   selectedSizes = [], onSelectSize,
 }: Props) {
@@ -110,8 +111,8 @@ export default function ProductCard({
                 </span>
               ) : <span />}
 
-              {/* admin actions */}
-              {isAdmin && (
+              {/* admin actions — solo en modo edición */}
+              {isAdmin && editMode && (
                 <div className="flex gap-1 -mt-0.5 -mr-0.5">
                   <button
                     onClick={() => onEdit(product)}
@@ -187,7 +188,7 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* ── ADMIN size view: split pill [number | 👁] ── */}
+        {/* ── ADMIN size view ── */}
         {isAdmin ? (
           <div className="space-y-2">
             {/* Visible sizes */}
@@ -195,51 +196,49 @@ export default function ProductCard({
               <div className="flex flex-wrap gap-1.5">
                 {allSizesSorted.filter((s) => !s.hidden).map((size) => {
                   const isSold = size.sold >= size.quantity;
-                  return (
+                  return editMode ? (
+                    // Edit mode: split pill [number | 👁]
                     <div key={size.id}
                       className={`inline-flex items-stretch rounded-lg border text-[11px] overflow-hidden transition-all ${
-                        isSold
-                          ? "border-gucha-red/30 bg-gucha-red-dark/20"
-                          : "border-gucha-border bg-gucha-dark"
+                        isSold ? "border-gucha-red/30 bg-gucha-red-dark/20" : "border-gucha-border bg-gucha-dark"
                       }`}>
-                      {/* click = open sale modal */}
-                      <button
-                        onClick={() => setSaleTarget(size)}
+                      <button onClick={() => setSaleTarget(size)}
                         title={isSold ? `Talla ${size.number} · agotada` : `Registrar venta talla ${size.number}`}
-                        className={`px-2.5 py-1.5 font-semibold transition-colors ${
-                          isSold
-                            ? "text-gucha-red/60 line-through cursor-default"
-                            : "text-[#ccc] hover:text-white hover:bg-[#222] active:scale-95"
-                        }`}
-                      >
+                        className={`px-2.5 py-1.5 font-semibold transition-colors ${isSold ? "text-gucha-red/60 line-through cursor-default" : "text-[#ccc] hover:text-white hover:bg-[#222] active:scale-95"}`}>
                         {size.number}
                       </button>
-                      {/* click = hide size */}
-                      <button
-                        onClick={() => onToggleSizeHidden?.(product.id, size.id, true)}
+                      <button onClick={() => onToggleSizeHidden?.(product.id, size.id, true)}
                         title="Ocultar talla"
-                        className="px-1.5 flex items-center border-l border-gucha-border/40 text-gucha-muted/60 hover:text-gucha-red-light transition-colors"
-                      >
+                        className="px-1.5 flex items-center border-l border-gucha-border/40 text-gucha-muted/60 hover:text-gucha-red-light transition-colors">
                         <EyeIcon open={true} />
                       </button>
                     </div>
+                  ) : (
+                    // Normal mode: simple pill, click = sell
+                    <button key={size.id} onClick={() => !isSold && setSaleTarget(size)}
+                      title={isSold ? `Talla ${size.number} · agotada` : `Registrar venta talla ${size.number}`}
+                      className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors ${
+                        isSold
+                          ? "border-gucha-red/30 bg-gucha-red-dark/20 text-gucha-red/60 line-through cursor-default"
+                          : "border-gucha-border bg-gucha-dark text-[#ccc] hover:text-white hover:bg-[#222] active:scale-95"
+                      }`}>
+                      {size.number}
+                    </button>
                   );
                 })}
               </div>
             )}
 
-            {/* Hidden sizes */}
-            {hiddenSizes.length > 0 && (
+            {/* Hidden sizes — solo en modo edición */}
+            {editMode && hiddenSizes.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {hiddenSizes
                   .sort((a, b) => parseFloat(a.number) - parseFloat(b.number))
                   .map((size) => (
-                    <button
-                      key={size.id}
+                    <button key={size.id}
                       onClick={() => onToggleSizeHidden?.(product.id, size.id, false)}
                       title={`Talla ${size.number} oculta · clic para mostrar`}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gucha-border/30 text-gucha-muted/40 text-[11px] font-semibold line-through hover:text-gucha-green-light hover:border-gucha-green/30 transition-colors"
-                    >
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gucha-border/30 text-gucha-muted/40 text-[11px] font-semibold line-through hover:text-gucha-green-light hover:border-gucha-green/30 transition-colors">
                       <EyeIcon open={false} />
                       {size.number}
                     </button>
@@ -253,7 +252,7 @@ export default function ProductCard({
 
             {product.sizes.length > 0 && (
               <p className="text-[9px] text-gucha-muted/50 tracking-wide">
-                Toca el número para vender · 👁 para ocultar
+                {editMode ? "Toca el número para vender · 👁 para ocultar" : "Toca una talla para registrar venta"}
               </p>
             )}
           </div>
