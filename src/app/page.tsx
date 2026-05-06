@@ -13,13 +13,15 @@ import StockTable       from "@/components/StockTable";
 import MobileStockList  from "@/components/MobileStockList";
 import SalesRegister    from "@/components/SalesRegister";
 import FilterBar, { defaultFilters, type Filters } from "@/components/FilterBar";
-import CartModal from "@/components/CartModal";
-import type { BrandData, CartItem, ProductData, ProductFormData, Stats as StatsType } from "@/types";
+import BulkSaleModal from "@/components/BulkSaleModal";
+import type { AdminSelectedSize, BrandData, ProductData, ProductFormData, SaleLine, Stats as StatsType } from "@/types";
 
 function computeStats(products: ProductData[], brands: BrandData[]): StatsType {
+  const visibleProducts = products.filter((p) => !p.hidden);
   return {
     totalProducts: products.length,
-    totalStock:    products.reduce((acc, p) => acc + p.sizes.reduce((s, sz) => s + sz.quantity - sz.sold, 0), 0),
+    totalStock:    visibleProducts.reduce((acc, p) =>
+      acc + p.sizes.filter((sz) => !sz.hidden).reduce((s, sz) => s + Math.max(0, sz.quantity - sz.sold), 0), 0),
     totalSold:     products.reduce((acc, p) => acc + p.sizes.reduce((s, sz) => s + sz.sold, 0), 0),
     totalBrands:   brands.length,
   };
@@ -52,8 +54,8 @@ function downloadInventoryExcel(products: ProductData[]) {
   const wb   = XLSX.utils.book_new();
   const curr = '"$"#,##0.00';
 
-  // Hoja 1: Detalle por talla
-  const h1 = ["Marca", "Modelo", "Precio", "Talla", "Stock", "Vendidos", "Disponibles", "Cobrado"];
+  // Hoja 1: Detalle por size
+  const h1 = ["Marca", "Modelo", "Precio", "Size", "Stock", "Vendidos", "Disponibles", "Cobrado"];
   const r1: (string | number)[][] = [h1];
   products.forEach((p) => {
     const brand = p.brand?.name ?? "Sin marca";
@@ -112,9 +114,9 @@ export default function HomePage() {
   const [showLogin,   setShowLogin]   = useState(false);
   const [modalOpen,   setModalOpen]   = useState(false);
   const [editProduct, setEditProduct] = useState<ProductData | null>(null);
-  const [toast,       setToast]       = useState("");
-  const [cart,        setCart]        = useState<CartItem[]>([]);
-  const [cartOpen,    setCartOpen]    = useState(false);
+  const [toast,          setToast]          = useState("");
+  const [adminSelection, setAdminSelection] = useState<Record<number, AdminSelectedSize>>({});
+  const [adminSaleOpen,  setAdminSaleOpen]  = useState(false);
 
   // { sizeId → { productName, sizeNumber } }
   const [selection, setSelection] = useState<Record<number, { productName: string; sizeNumber: string }>>({});
@@ -219,11 +221,11 @@ export default function HomePage() {
         sizes: p.sizes.map((s) => s.id === sizeId ? { ...s, hidden } : s),
       })
     );
-    showToast(hidden ? "Talla ocultada" : "Talla visible");
+    showToast(hidden ? "Size ocultado" : "Size visible");
   }
 
   async function handleDeleteSize(productId: number, sizeId: number) {
-    if (!confirm("¿Eliminar esta talla?")) return;
+    if (!confirm("¿Eliminar este size?")) return;
     await fetch(`/api/products/${productId}/sizes/${sizeId}`, { method: "DELETE" });
     setProducts((prev) =>
       prev.map((p) => p.id !== productId ? p : {
@@ -231,7 +233,7 @@ export default function HomePage() {
         sizes: p.sizes.filter((s) => s.id !== sizeId),
       })
     );
-    showToast("Talla eliminada");
+    showToast("Size eliminado");
   }
 
   async function handleAddSize(productId: number, number: string, quantity: number) {
@@ -243,7 +245,7 @@ export default function HomePage() {
     setProducts((prev) =>
       prev.map((p) => p.id !== productId ? p : { ...p, sizes: [...p.sizes, size] })
     );
-    showToast("Talla agregada");
+    showToast("Size agregado");
   }
 
   async function handleEditSize(productId: number, sizeId: number, number: string, quantity: number) {
@@ -257,7 +259,7 @@ export default function HomePage() {
         ...p, sizes: p.sizes.map((s) => s.id === sizeId ? { ...s, ...size } : s),
       })
     );
-    showToast("Talla actualizada");
+    showToast("Size actualizado");
   }
 
   async function handleSale(productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) {
@@ -293,20 +295,22 @@ export default function HomePage() {
     showToast("Venta revertida");
   }
 
-  function handleAddToCart(productId: number, productName: string, brand: string | null, sizeId: number, sizeNumber: string, qty: number, price: number) {
-    setCart((prev) => [...prev, { productId, productName, brand, sizeId, sizeNumber, qty, price }]);
-    showToast("Añadido al carrito 🛒");
+  function handleAdminSelectSize(productId: number, sizeId: number) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    const size = product.sizes.find((s) => s.id === sizeId);
+    if (!size || size.sold >= size.quantity) return;
+    setAdminSelection((prev) => {
+      if (prev[sizeId]) { const n = { ...prev }; delete n[sizeId]; return n; }
+      return { ...prev, [sizeId]: { productId, productName: product.name, brand: product.brand?.name ?? null, sizeId, sizeNumber: size.number, maxQty: size.quantity - size.sold, listPrice: product.price } };
+    });
   }
 
-  function handleRemoveFromCart(index: number) {
-    setCart((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  async function handleCartCheckout(buyer: string, note: string) {
-    for (const item of cart) {
-      await handleSale(item.productId, item.sizeId, item.qty, item.price, buyer, note);
+  async function handleAdminBulkSale(lines: SaleLine[]) {
+    for (const line of lines) {
+      await handleSale(line.productId, line.sizeId, line.qty, line.price, line.buyer, line.note);
     }
-    setCart([]);
+    setAdminSelection({});
   }
 
   function openAdd()                { setEditProduct(null); setModalOpen(true); }
@@ -441,7 +445,7 @@ export default function HomePage() {
       ) : (
         <div className="hidden md:flex items-center justify-center gap-2 mt-3 w-full bg-[#128c47]/30 border border-gucha-green/10 text-gucha-muted text-[12px] font-bold py-2.5 rounded-xl cursor-default select-none">
           {waSvg}
-          Selecciona tallas
+          Selecciona sizes
         </div>
       ))}
     </>
@@ -492,14 +496,14 @@ export default function HomePage() {
           isAdmin={isAdmin}
           editMode={editMode}
           hideSoldSizes={!isAdmin && filters.onlyAvailable}
-          onSell={handleSale}
           onEdit={openEdit}
           onDelete={handleDelete}
           onToggleHidden={isAdmin ? handleToggleHidden : undefined}
           onToggleSizeHidden={isAdmin ? handleToggleSizeHidden : undefined}
           selectedSizes={product.sizes.filter((s) => selection[s.id]).map((s) => s.id)}
           onSelectSize={!isAdmin ? handleSelectSize : undefined}
-          onAddToCart={isAdmin ? handleAddToCart : undefined}
+          adminSelectedSizes={isAdmin ? Object.keys(adminSelection).map(Number) : []}
+          onAdminSelectSize={isAdmin ? handleAdminSelectSize : undefined}
         />
       ))}
     </div>
@@ -604,15 +608,6 @@ export default function HomePage() {
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
-                    {cart.length > 0 && (
-                      <button onClick={() => setCartOpen(true)}
-                        className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[11px] font-bold hover:bg-gucha-green/20 transition-all">
-                        🛒
-                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gucha-red text-white text-[9px] font-black flex items-center justify-center">
-                          {cart.length}
-                        </span>
-                      </button>
-                    )}
                     <button
                       onClick={() => downloadInventoryExcel(products)}
                       title="Descargar inventario en Excel"
@@ -645,7 +640,8 @@ export default function HomePage() {
                     onEditSize={handleEditSize}
                     onSell={handleSale}
                     onRevertSale={handleRevertSale}
-                    onAddToCart={handleAddToCart}
+                    adminSelectedSizes={Object.keys(adminSelection).map(Number)}
+                    onAdminSelectSize={handleAdminSelectSize}
                   />
                 : productGrid}
             </>
@@ -732,15 +728,6 @@ export default function HomePage() {
                   </svg>
                   Descargar Excel
                 </button>
-                {cart.length > 0 && (
-                  <button onClick={() => setCartOpen(true)}
-                    className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[11px] font-bold">
-                    🛒
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gucha-red text-white text-[9px] font-black flex items-center justify-center">
-                      {cart.length}
-                    </span>
-                  </button>
-                )}
                 {!loading && (
                   <span className="text-[11px] text-gucha-muted ml-auto">
                     {filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""} modelos
@@ -777,7 +764,6 @@ export default function HomePage() {
                 onEditSize={handleEditSize}
                 onSell={handleSale}
                 onRevertSale={handleRevertSale}
-                onAddToCart={handleAddToCart}
               />
             ) : (
               productGrid
@@ -847,13 +833,27 @@ export default function HomePage() {
           onSave={handleSave}
         />
       )}
-      {cartOpen && (
-        <CartModal
-          items={cart}
-          onRemove={handleRemoveFromCart}
-          onCheckout={handleCartCheckout}
-          onClose={() => setCartOpen(false)}
+      {adminSaleOpen && Object.keys(adminSelection).length > 0 && (
+        <BulkSaleModal
+          items={Object.values(adminSelection)}
+          onSell={handleAdminBulkSale}
+          onClose={() => { setAdminSaleOpen(false); setAdminSelection({}); }}
         />
+      )}
+
+      {/* ── Floating admin "Registrar venta" bar ── */}
+      {isAdmin && isInventory && Object.keys(adminSelection).length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 bg-[#111] border border-gucha-red/40 rounded-2xl shadow-red-glow animate-fade-up">
+          <span className="text-[12px] font-semibold text-gucha-muted">
+            {Object.keys(adminSelection).length} {Object.keys(adminSelection).length === 1 ? "size" : "sizes"} seleccionados
+          </span>
+          <button onClick={() => setAdminSaleOpen(true)}
+            className="px-4 py-2 rounded-xl bg-red-gradient text-white text-[12px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-red-glow">
+            Registrar venta
+          </button>
+          <button onClick={() => setAdminSelection({})}
+            className="w-7 h-7 flex items-center justify-center rounded-lg border border-gucha-border text-gucha-muted hover:text-white transition-colors text-[11px]">✕</button>
+        </div>
       )}
     </main>
   );

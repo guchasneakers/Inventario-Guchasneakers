@@ -82,7 +82,7 @@ function generateInvoice(items: CartItem[], buyer: string, note: string) {
     <thead>
       <tr>
         <th>Modelo</th>
-        <th class="center">Talla</th>
+        <th class="center">Size</th>
         <th class="center">Cant.</th>
         <th class="right">Precio</th>
         <th class="right">Subtotal</th>
@@ -160,7 +160,7 @@ export default function CartModal({ items, onRemove, onCheckout, onClose }: Prop
                 )}
                 <p className="text-[12px] font-semibold text-white leading-snug truncate">{item.productName}</p>
                 <p className="text-[10px] text-gucha-muted mt-0.5">
-                  Talla {item.sizeNumber} · {item.qty} par{item.qty > 1 ? "es" : ""} · ${item.price.toFixed(2)}/par
+                  Size {item.sizeNumber} · {item.qty} par{item.qty > 1 ? "es" : ""} · ${item.price.toFixed(2)}/par
                 </p>
               </div>
               <div className="flex-shrink-0 text-right">

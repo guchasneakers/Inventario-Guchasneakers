@@ -11,7 +11,6 @@ interface Props {
   onSell:       (qty: number, price: number, buyer: string, note: string) => Promise<void>;
   onRevert?:    (saleId: number) => Promise<void>;
   showRevert?:  boolean;   // default true — pass false to hide the revert tab
-  onAddToCart?: (qty: number, price: number) => void;
   onClose:      () => void;
 }
 
@@ -25,7 +24,7 @@ function fmt(date: string) {
 
 export default function SaleModal({
   sizeId, sizeNumber, available, listPrice,
-  onSell, onRevert, showRevert = true, onAddToCart, onClose,
+  onSell, onRevert, showRevert = true, onClose,
 }: Props) {
   const [mode,    setMode]    = useState<Mode>(
     (showRevert && available === 0) ? "revert" : "sell"
@@ -89,7 +88,7 @@ export default function SaleModal({
         {/* header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gucha-border/60 flex-shrink-0">
           <div>
-            <p className="text-[10px] text-gucha-muted tracking-widest uppercase">Talla {sizeNumber}</p>
+            <p className="text-[10px] text-gucha-muted tracking-widest uppercase">Size {sizeNumber}</p>
             <p className="text-[15px] font-black text-white">
               {mode === "sell" ? "Registrar venta" : "Historial de ventas"}
             </p>
@@ -192,7 +191,7 @@ export default function SaleModal({
             ) : sales.length === 0 ? (
               <div className="text-center py-10">
                 <p className="text-3xl mb-2 opacity-30">📭</p>
-                <p className="text-[12px] text-gucha-muted">No hay ventas registradas para esta talla</p>
+                <p className="text-[12px] text-gucha-muted">No hay ventas registradas para este size</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -248,13 +247,6 @@ export default function SaleModal({
                   {saving ? "Registrando…" : "Confirmar venta"}
                 </button>
               </div>
-              {onAddToCart && (
-                <button
-                  onClick={() => { onAddToCart(safeQty, safePrice); onClose(); }}
-                  className="w-full py-2 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[12px] font-bold hover:bg-gucha-green/20 transition-all">
-                  + Añadir al carrito
-                </button>
-              )}
             </div>
           )}
           {(mode === "revert" || (mode === "sell" && maxQty === 0)) && (

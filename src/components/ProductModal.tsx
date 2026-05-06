@@ -215,7 +215,7 @@ export default function ProductModal({ product, brands, onBrandCreated, onClose,
 
           {/* sizes */}
           <div>
-            <label className={labelCls}>Tallas</label>
+            <label className={labelCls}>Sizes</label>
 
             {/* Added sizes with qty steppers */}
             {form.sizes.length > 0 && (

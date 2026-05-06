@@ -20,7 +20,6 @@ interface Props {
   onEditSize:         (productId: number, sizeId: number, number: string, quantity: number) => Promise<void>;
   onSell:             (productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) => Promise<void>;
   onRevertSale:       (saleId: number) => Promise<void>;
-  onAddToCart?:       (productId: number, productName: string, brand: string | null, sizeId: number, sizeNumber: string, qty: number, price: number) => void;
 }
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -50,10 +49,10 @@ function SizeEditModal({ size, onConfirm, onClose }: {
       <div className="bg-[#111] border border-gucha-border rounded-2xl p-5 w-72 shadow-card animate-fade-up"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-[14px] font-black text-white">Editar talla</p>
+          <p className="text-[14px] font-black text-white">Editar size</p>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white transition-colors text-[11px]">✕</button>
         </div>
-        <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Número de talla</label>
+        <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Número de size</label>
         <select value={num} onChange={(e) => setNum(e.target.value)}
           className="w-full mb-3 bg-[#0d0d0d] border border-gucha-border rounded-xl px-3.5 py-2.5 text-[13px] text-white outline-none appearance-none cursor-pointer">
           {US_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -79,7 +78,7 @@ function SizeEditModal({ size, onConfirm, onClose }: {
 
 export default function MobileStockList({
   products, editMode = false, onEdit, onDelete, onToggleHidden,
-  onToggleSizeHidden, onDeleteSize, onEditSize, onSell, onRevertSale, onAddToCart,
+  onToggleSizeHidden, onDeleteSize, onEditSize, onSell, onRevertSale,
 }: Props) {
   const [selectedSizes, setSelectedSizes] = useState<Record<number, number>>({});
   const [saleTarget,    setSaleTarget]    = useState<{ size: SizeData; product: ProductData } | null>(null);
@@ -265,7 +264,7 @@ export default function MobileStockList({
                       </div>
                     ) : (
                       sorted.length > 0 && (
-                        <p className="text-[9px] text-gucha-muted/40">Toca una talla para ver acciones</p>
+                        <p className="text-[9px] text-gucha-muted/40">Toca un size para ver acciones</p>
                       )
                     )}
                   </div>
@@ -287,9 +286,6 @@ export default function MobileStockList({
             setSaleTarget(null);
           }}
           onRevert={onRevertSale}
-          onAddToCart={onAddToCart ? (qty, price) => {
-            onAddToCart(saleTarget.product.id, saleTarget.product.name, saleTarget.product.brand?.name ?? null, saleTarget.size.id, saleTarget.size.number, qty, price);
-          } : undefined}
           onClose={() => setSaleTarget(null)}
         />
       )}

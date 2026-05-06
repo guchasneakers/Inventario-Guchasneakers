@@ -35,7 +35,7 @@ export default function SizePill({ size, isAdmin, onToggle, selected = false, on
         : isAdmin          ? "Marcar vendido"
         : isSold           ? "Agotado"
         : selected         ? "Quitar selección"
-        :                    "Seleccionar talla"
+        :                    "Seleccionar size"
       }
       className={[
         "relative text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all duration-200 select-none",

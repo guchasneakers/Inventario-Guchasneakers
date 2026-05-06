@@ -2,10 +2,9 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import type { ProductData, SizeData } from "@/types";
+import type { ProductData } from "@/types";
 import SizePill from "./SizePill";
 import ImageLightbox from "./ImageLightbox";
-import SaleModal from "./SaleModal";
 
 interface Props {
   product:             ProductData;
@@ -13,14 +12,14 @@ interface Props {
   isAdmin:             boolean;
   editMode?:           boolean;
   hideSoldSizes?:      boolean;
-  onSell:              (productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) => Promise<void>;
   onEdit:              (product: ProductData) => void;
   onDelete:            (productId: number) => void;
   onToggleHidden?:     (productId: number, hidden: boolean) => void;
   onToggleSizeHidden?: (productId: number, sizeId: number, hidden: boolean) => void;
   selectedSizes?:      number[];
   onSelectSize?:       (productId: number, sizeId: number) => void;
-  onAddToCart?:        (productId: number, productName: string, brand: string | null, sizeId: number, sizeNumber: string, qty: number, price: number) => void;
+  adminSelectedSizes?: number[];
+  onAdminSelectSize?:  (productId: number, sizeId: number) => void;
 }
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -38,12 +37,11 @@ function EyeIcon({ open }: { open: boolean }) {
 }
 
 export default function ProductCard({
-  product, index, isAdmin, editMode = false, hideSoldSizes = false, onSell, onEdit, onDelete,
+  product, index, isAdmin, editMode = false, hideSoldSizes = false, onEdit, onDelete,
   onToggleHidden, onToggleSizeHidden,
-  selectedSizes = [], onSelectSize, onAddToCart,
+  selectedSizes = [], onSelectSize, adminSelectedSizes = [], onAdminSelectSize,
 }: Props) {
-  const [lightbox,   setLightbox]   = useState(false);
-  const [saleTarget, setSaleTarget] = useState<SizeData | null>(null);
+  const [lightbox, setLightbox] = useState(false);
 
   // For client view: only visible sizes
   const visibleSizes = product.sizes.filter((s) => !s.hidden);
@@ -170,7 +168,7 @@ export default function ProductCard({
         {totalPairs > 0 && (
           <div className="mb-3">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-[9px] text-gucha-muted tracking-widest">TALLAS</span>
+              <span className="text-[9px] text-gucha-muted tracking-widest">SIZES</span>
               {isAdmin && (
                 <span className="text-[9px] text-gucha-muted">{soldPairs}/{totalPairs} vendidos</span>
               )}
@@ -196,26 +194,28 @@ export default function ProductCard({
                     // Edit mode: split pill [number | 👁]
                     <div key={size.id}
                       className={`inline-flex items-stretch rounded-lg border text-[11px] overflow-hidden transition-all ${
-                        isSold ? "border-gucha-red/30 bg-gucha-red-dark/20" : "border-gucha-border bg-gucha-dark"
+                        isSold ? "border-gucha-red/30 bg-gucha-red-dark/20" : adminSelectedSizes.includes(size.id) ? "border-gucha-green/60 bg-gucha-green-dark/60" : "border-gucha-border bg-gucha-dark"
                       }`}>
-                      <button onClick={() => setSaleTarget(size)}
-                        title={isSold ? `Talla ${size.number} · agotada` : `Registrar venta talla ${size.number}`}
-                        className={`px-2.5 py-1.5 font-semibold transition-colors ${isSold ? "text-gucha-red/60 line-through cursor-default" : "text-[#ccc] hover:text-white hover:bg-[#222] active:scale-95"}`}>
+                      <button onClick={() => !isSold && onAdminSelectSize?.(product.id, size.id)}
+                        title={isSold ? `Size ${size.number} · agotada` : `Registrar venta size ${size.number}`}
+                        className={`px-2.5 py-1.5 font-semibold transition-colors ${isSold ? "text-gucha-red/60 line-through cursor-default" : adminSelectedSizes.includes(size.id) ? "text-gucha-green-light" : "text-[#ccc] hover:text-white hover:bg-[#222] active:scale-95"}`}>
                         {size.number}
                       </button>
                       <button onClick={() => onToggleSizeHidden?.(product.id, size.id, true)}
-                        title="Ocultar talla"
+                        title="Ocultar size"
                         className="px-1.5 flex items-center border-l border-gucha-border/40 text-gucha-muted/60 hover:text-gucha-red-light transition-colors">
                         <EyeIcon open={true} />
                       </button>
                     </div>
                   ) : (
-                    // Normal mode: simple pill, click = sell
-                    <button key={size.id} onClick={() => !isSold && setSaleTarget(size)}
-                      title={isSold ? `Talla ${size.number} · agotada` : `Registrar venta talla ${size.number}`}
+                    // Normal mode: simple pill, click = select for bulk sale
+                    <button key={size.id} onClick={() => !isSold && onAdminSelectSize?.(product.id, size.id)}
+                      title={isSold ? `Size ${size.number} · agotada` : `Seleccionar size ${size.number}`}
                       className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors ${
                         isSold
                           ? "border-gucha-red/30 bg-gucha-red-dark/20 text-gucha-red/60 line-through cursor-default"
+                          : adminSelectedSizes.includes(size.id)
+                          ? "border-gucha-green/60 bg-gucha-green-dark/60 text-gucha-green-light"
                           : "border-gucha-border bg-gucha-dark text-[#ccc] hover:text-white hover:bg-[#222] active:scale-95"
                       }`}>
                       {size.number}
@@ -233,7 +233,7 @@ export default function ProductCard({
                   .map((size) => (
                     <button key={size.id}
                       onClick={() => onToggleSizeHidden?.(product.id, size.id, false)}
-                      title={`Talla ${size.number} oculta · clic para mostrar`}
+                      title={`Size ${size.number} oculta · clic para mostrar`}
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gucha-border/30 text-gucha-muted/40 text-[11px] font-semibold line-through hover:text-gucha-green-light hover:border-gucha-green/30 transition-colors">
                       <EyeIcon open={false} />
                       {size.number}
@@ -243,12 +243,12 @@ export default function ProductCard({
             )}
 
             {product.sizes.length === 0 && (
-              <p className="text-[10px] text-gucha-muted italic">Sin tallas registradas</p>
+              <p className="text-[10px] text-gucha-muted italic">Sin sizes registradas</p>
             )}
 
             {product.sizes.length > 0 && (
               <p className="text-[9px] text-gucha-muted/50 tracking-wide">
-                {editMode ? "Toca el número para vender · 👁 para ocultar" : "Toca una talla para registrar venta"}
+                {editMode ? "Toca el número para vender · 👁 para ocultar" : "Toca un size para registrar venta"}
               </p>
             )}
           </div>
@@ -269,12 +269,12 @@ export default function ProductCard({
                 ))}
               </div>
             ) : (
-              <p className="text-[10px] text-gucha-muted italic">Sin tallas disponibles</p>
+              <p className="text-[10px] text-gucha-muted italic">Sin sizes disponibles</p>
             )}
 
             {displaySizes.some((s) => s.sold < s.quantity) && (
               <p className="text-[9px] text-gucha-green-light/50 mt-2 tracking-wide">
-                Toca las tallas que te interesan para ordenar
+                Toca los sizes que te interesan para ordenar
               </p>
             )}
           </>
@@ -290,23 +290,6 @@ export default function ProductCard({
       />
     )}
 
-    {saleTarget && (
-      <SaleModal
-        sizeId={saleTarget.id}
-        sizeNumber={saleTarget.number}
-        available={saleTarget.quantity - saleTarget.sold}
-        listPrice={product.price ?? undefined}
-        showRevert={false}
-        onSell={async (qty, price, buyer, note) => {
-          await onSell(product.id, saleTarget.id, qty, price, buyer, note);
-          setSaleTarget(null);
-        }}
-        onAddToCart={onAddToCart ? (qty, price) => {
-          onAddToCart(product.id, product.name, product.brand?.name ?? null, saleTarget!.id, saleTarget!.number, qty, price);
-        } : undefined}
-        onClose={() => setSaleTarget(null)}
-      />
-    )}
     </>
   );
 }

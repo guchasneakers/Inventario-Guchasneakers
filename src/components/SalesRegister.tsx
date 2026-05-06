@@ -138,7 +138,7 @@ export default function SalesRegister({ onRevert }: Props) {
     XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
 
     // ── Sheet 2: Detalle de ventas ───────────────────────────────────────
-    const headers = ["#", "Fecha", "Marca", "Modelo", "Talla", "Cliente", "Pares", "$/par", "Total", "Nota"];
+    const headers = ["#", "Fecha", "Marca", "Modelo", "Size", "Cliente", "Pares", "$/par", "Total", "Nota"];
     const rows = filtered.map((s) => [
       s.id,
       fmt(s.createdAt),
@@ -221,6 +221,36 @@ export default function SalesRegister({ onRevert }: Props) {
     XLSX.writeFile(wb, fileName);
   }
 
+  function generateSaleInvoice(sale: SaleRecord) {
+    const logoUrl = window.location.origin + "/logo.png";
+    const dateStr = new Intl.DateTimeFormat("es", { dateStyle: "long" }).format(new Date(sale.createdAt));
+    const total   = sale.quantity * sale.pricePerPair;
+    const productName = sale.size?.product?.name ?? "Producto";
+    const brand = sale.size?.product?.brand?.name ?? "";
+    const sizeNumber = sale.size?.number ?? "—";
+    const row = `<tr>
+      <td>${brand ? `<div class="brand">${brand}</div>` : ""}${productName}</td>
+      <td class="center">${sizeNumber}</td>
+      <td class="center">${sale.quantity}</td>
+      <td class="right">$${sale.pricePerPair.toFixed(2)}</td>
+      <td class="right"><strong>$${total.toFixed(2)}</strong></td>
+    </tr>`;
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Factura #${sale.id} · Gucha Sneakers</title>
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#fff;color:#111;padding:40px;max-width:720px;margin:0 auto}header{text-align:center;padding-bottom:24px;border-bottom:3px solid #cc2222;margin-bottom:28px}header img{width:110px;height:auto;margin-bottom:10px}header h1{font-size:22px;font-weight:900;color:#cc2222;letter-spacing:.12em}header p{font-size:11px;color:#888;margin-top:3px}.meta{display:flex;justify-content:space-between;margin-bottom:24px;gap:20px}.meta-block{font-size:13px}.meta-label{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.15em;margin-bottom:4px;font-weight:bold}table{width:100%;border-collapse:collapse;margin-bottom:24px}thead tr{border-bottom:2px solid #cc2222;background:#fafafa}th{padding:10px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#888}td{padding:12px;font-size:13px;border-bottom:1px solid #eee;vertical-align:top}.brand{font-size:9px;color:#cc2222;font-weight:900;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px}.center{text-align:center}.right{text-align:right}.total-row td{border-top:2px solid #cc2222;border-bottom:none;background:#fff9f9;padding:14px 12px}.total-label{font-size:12px;color:#555;text-align:right;font-weight:bold}.total-value{font-size:22px;font-weight:900;color:#cc2222;text-align:right}footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #eee}@media print{body{padding:20px}}</style>
+    </head><body>
+    <header><img src="${logoUrl}" alt="Gucha Sneakers"/><h1>GUCHA SNEAKERS</h1><p>FREE SHIPPING ACROSS THE USA</p></header>
+    <div class="meta">
+      <div class="meta-block"><div class="meta-label">Comprador</div><div><strong>${sale.buyerName || "—"}</strong></div>${sale.note ? `<div style="font-size:12px;color:#777;margin-top:4px">${sale.note}</div>` : ""}</div>
+      <div class="meta-block" style="text-align:right"><div class="meta-label">Venta #${sale.id} · Fecha</div><div>${dateStr}</div></div>
+    </div>
+    <table><thead><tr><th>Modelo</th><th class="center">Size</th><th class="center">Cant.</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead>
+    <tbody>${row}<tr class="total-row"><td colspan="4" class="total-label">Total</td><td class="total-value">$${total.toFixed(2)}</td></tr></tbody></table>
+    <footer><p style="font-size:13px;font-weight:bold;color:#333">¡Gracias por tu compra!</p><p style="font-size:11px;color:#aaa;margin-top:4px">Gucha Sneakers · Envío gratis a todo USA</p></footer>
+    <script>window.onload=()=>{window.print();}<\/script></body></html>`;
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+  }
+
   return (
     <div className="space-y-4">
 
@@ -261,14 +291,10 @@ export default function SalesRegister({ onRevert }: Props) {
       </div>
 
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-card-gradient border border-gucha-border rounded-xl px-4 py-3 text-center">
           <p className="text-[9px] text-gucha-muted tracking-widest uppercase mb-1">Ventas</p>
           <p className="text-[22px] font-black text-white">{filtered.length}</p>
-        </div>
-        <div className="bg-card-gradient border border-gucha-border rounded-xl px-4 py-3 text-center">
-          <p className="text-[9px] text-gucha-muted tracking-widest uppercase mb-1">Pares</p>
-          <p className="text-[22px] font-black text-white">{totalPairs}</p>
         </div>
         <div className="bg-gucha-green-dark/30 border border-gucha-green/30 rounded-xl px-4 py-3 text-center">
           <p className="text-[9px] text-gucha-green-light/70 tracking-widest uppercase mb-1">💰 Cobrado</p>
@@ -327,7 +353,7 @@ export default function SalesRegister({ onRevert }: Props) {
                   <th className="text-left px-4 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">#</th>
                   <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Fecha</th>
                   <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Modelo</th>
-                  <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Talla</th>
+                  <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Size</th>
                   <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Cliente</th>
                   <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Pares</th>
                   <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">$/par</th>
@@ -372,13 +398,22 @@ export default function SalesRegister({ onRevert }: Props) {
                       <span className="text-gucha-muted truncate block">{sale.note || "—"}</span>
                     </td>
                     <td className="px-3 py-3 text-center">
-                      <button
-                        onClick={() => handleRevert(sale)}
-                        disabled={reverting === sale.id}
-                        className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-red-light hover:border-gucha-red/40 disabled:opacity-40 transition-colors whitespace-nowrap"
-                      >
-                        {reverting === sale.id ? "…" : "Revertir"}
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => generateSaleInvoice(sale)}
+                          title="Generar factura"
+                          className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors whitespace-nowrap"
+                        >
+                          📄
+                        </button>
+                        <button
+                          onClick={() => handleRevert(sale)}
+                          disabled={reverting === sale.id}
+                          className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-red-light hover:border-gucha-red/40 disabled:opacity-40 transition-colors whitespace-nowrap"
+                        >
+                          {reverting === sale.id ? "…" : "Revertir"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

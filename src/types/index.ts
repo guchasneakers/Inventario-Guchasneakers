@@ -64,6 +64,25 @@ export type ProductFormData = {
   sizes:       SizeFormEntry[];
 };
 
+export interface AdminSelectedSize {
+  productId:   number;
+  productName: string;
+  brand:       string | null;
+  sizeId:      number;
+  sizeNumber:  string;
+  maxQty:      number;
+  listPrice:   number | null;
+}
+
+export interface SaleLine {
+  productId: number;
+  sizeId:    number;
+  qty:       number;
+  price:     number;
+  buyer:     string;
+  note:      string;
+}
+
 export interface CartItem {
   productId:   number;
   productName: string;

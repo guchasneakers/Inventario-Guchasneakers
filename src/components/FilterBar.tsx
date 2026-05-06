@@ -139,25 +139,32 @@ export default function FilterBar({ filters, onChange, brands, sizes, isAdmin }:
             </div>
           )}
 
-          {/* Talla */}
+          {/* Size */}
           {sizes.length > 0 && (
             <div className="py-2">
-              <p className={`${sectionLabel} mb-2`}>Talla</p>
-              <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                {sizes.map((s) => {
-                  const active = filters.size === s;
-                  return (
-                    <button key={s} type="button"
-                      onClick={() => set({ size: active ? "" : s })}
-                      className={`flex-shrink-0 w-9 h-8 rounded-lg text-[11px] font-bold border transition-all ${
-                        active
-                          ? "bg-gucha-dark border-gucha-subtle/70 text-white shadow-[0_0_8px_rgba(255,255,255,0.08)]"
-                          : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50"
-                      }`}>
-                      {s}
-                    </button>
-                  );
-                })}
+              <p className={`${sectionLabel} mb-2`}>Size</p>
+              <div className="relative">
+                <select
+                  value={filters.size}
+                  onChange={(e) => set({ size: e.target.value })}
+                  className={`w-full appearance-none px-3.5 py-2.5 rounded-xl border text-[12px] font-semibold transition-all outline-none cursor-pointer ${
+                    filters.size !== ""
+                      ? "bg-gucha-dark border-gucha-subtle/70 text-white"
+                      : "bg-[#0d0d0d] border-gucha-border text-gucha-muted"
+                  }`}
+                  style={{ backgroundImage: "none" }}
+                >
+                  <option value="">Todas las sizes</option>
+                  {sizes.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                {/* chevron icon */}
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gucha-muted">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-3.5 h-3.5">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </div>
               </div>
             </div>
           )}
