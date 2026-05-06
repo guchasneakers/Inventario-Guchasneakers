@@ -19,6 +19,149 @@ function fmtShort(date: string) {
   return new Intl.DateTimeFormat("es", { dateStyle: "short" }).format(new Date(date));
 }
 
+// ── PDF share via jsPDF ──────────────────────────────────────────────────────
+async function shareInvoicePdf(sale: SaleRecord) {
+  const { default: jsPDF } = await import("jspdf");
+  const logoBase64 = await getLogoBase64();
+
+  const doc  = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const W    = doc.internal.pageSize.getWidth();
+  const RED  : [number,number,number] = [204, 34, 34];
+  const GRAY : [number,number,number] = [136, 136, 136];
+  const BLACK: [number,number,number] = [17,  17,  17];
+  let y = 40;
+
+  // Logo
+  if (logoBase64) {
+    doc.addImage(logoBase64, "PNG", (W - 80) / 2, y, 80, 60);
+    y += 72;
+  }
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...RED);
+  doc.text("GUCHA SNEAKERS", W / 2, y, { align: "center" });
+  y += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...GRAY);
+  doc.text("FREE SHIPPING ACROSS THE USA", W / 2, y, { align: "center" });
+  y += 16;
+
+  // Header line
+  doc.setDrawColor(...RED);
+  doc.setLineWidth(2);
+  doc.line(40, y, W - 40, y);
+  y += 22;
+
+  // Meta
+  const dateStr = new Intl.DateTimeFormat("es", { dateStyle: "long" }).format(new Date(sale.createdAt));
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...GRAY);
+  doc.text("COMPRADOR", 40, y);
+  doc.text(`VENTA #${sale.id}  ·  FECHA`, W - 40, y, { align: "right" });
+  y += 13;
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...BLACK);
+  doc.text(sale.buyerName || "—", 40, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(dateStr, W - 40, y, { align: "right" });
+  if (sale.note) {
+    y += 13;
+    doc.setFontSize(9);
+    doc.setTextColor(...GRAY);
+    doc.text(sale.note, 40, y);
+  }
+  y += 26;
+
+  // Table header bg
+  doc.setFillColor(250, 250, 250);
+  doc.rect(40, y - 10, W - 80, 22, "F");
+  doc.setDrawColor(...RED);
+  doc.setLineWidth(1.5);
+  doc.line(40, y + 12, W - 40, y + 12);
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...GRAY);
+  doc.text("MODELO",   45,       y + 1);
+  doc.text("SIZE",     W * 0.6,  y + 1, { align: "center" });
+  doc.text("CANT.",    W - 200,  y + 1, { align: "center" });
+  doc.text("PRECIO",   W - 110,  y + 1, { align: "right" });
+  doc.text("SUBTOTAL", W - 40,   y + 1, { align: "right" });
+  y += 26;
+
+  // Row
+  const brand       = sale.size?.product?.brand?.name ?? "";
+  const productName = sale.size?.product?.name ?? "Producto";
+  const sizeNum     = sale.size?.number ?? "—";
+  const total       = sale.quantity * sale.pricePerPair;
+
+  if (brand) {
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RED);
+    doc.text(brand.toUpperCase(), 45, y);
+    y += 12;
+  }
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...BLACK);
+  const nameLines = doc.splitTextToSize(productName, 180);
+  doc.text(nameLines, 45, y);
+  doc.text(sizeNum,                    W * 0.6,  y, { align: "center" });
+  doc.text(String(sale.quantity),      W - 200,  y, { align: "center" });
+  doc.text(`$${sale.pricePerPair.toFixed(2)}`, W - 110, y, { align: "right" });
+  doc.text(`$${total.toFixed(2)}`,     W - 40,   y, { align: "right" });
+  y += Math.max(nameLines.length * 14, 16) + 10;
+
+  // Total row
+  doc.setFillColor(255, 249, 249);
+  doc.rect(40, y - 8, W - 80, 28, "F");
+  doc.setDrawColor(...RED);
+  doc.setLineWidth(1.5);
+  doc.line(40, y - 8, W - 40, y - 8);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(85, 85, 85);
+  doc.text("Total", W - 115, y + 8, { align: "right" });
+  doc.setFontSize(18);
+  doc.setTextColor(...RED);
+  doc.text(`$${total.toFixed(2)}`, W - 40, y + 10, { align: "right" });
+  y += 46;
+
+  // Footer
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(51, 51, 51);
+  doc.text("¡Gracias por tu compra!", W / 2, y, { align: "center" });
+  y += 13;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...GRAY);
+  doc.text("Gucha Sneakers · Envío gratis a todo USA", W / 2, y, { align: "center" });
+
+  // Share or download
+  const fileName = `factura-${sale.id}-gucha-sneakers.pdf`;
+  const blob     = doc.output("blob");
+  const file     = new File([blob], fileName, { type: "application/pdf" });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({ files: [file], title: `Factura #${sale.id} · Gucha Sneakers` });
+  } else {
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement("a");
+    a.href     = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+}
+
 const DATE_TABS: { value: DateMode; label: string }[] = [
   { value: "all",        label: "Todo"       },
   { value: "this-month", label: "Este mes"   },
@@ -221,6 +364,7 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
   const [sales,     setSales]     = useState<SaleRecord[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [reverting, setReverting] = useState<number | null>(null);
+  const [sharingId, setSharingId] = useState<number | null>(null);
   const [search,    setSearch]    = useState("");
   const [editSale,  setEditSale]  = useState<SaleRecord | null>(null);
 
@@ -581,10 +725,27 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
                           {/* Invoice */}
                           <button
                             onClick={() => generateSaleInvoice(sale)}
-                            title="Generar factura"
+                            title="Ver/imprimir factura"
                             className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors whitespace-nowrap"
                           >
                             📄
+                          </button>
+                          {/* Share PDF via WhatsApp */}
+                          <button
+                            onClick={async () => {
+                              setSharingId(sale.id);
+                              try { await shareInvoicePdf(sale); } catch { /* cancelled */ }
+                              setSharingId(null);
+                            }}
+                            disabled={sharingId === sale.id}
+                            title="Compartir factura PDF por WhatsApp"
+                            className="px-2.5 py-1 rounded-lg border border-[#25D366]/40 text-[#25D366] text-[9px] font-semibold hover:bg-[#25D366]/10 disabled:opacity-40 transition-colors whitespace-nowrap"
+                          >
+                            {sharingId === sale.id ? "…" : (
+                              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current inline-block">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                              </svg>
+                            )}
                           </button>
                           {/* Edit */}
                           <button
