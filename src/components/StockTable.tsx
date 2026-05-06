@@ -21,7 +21,6 @@ interface Props {
   onRevertSale:       (saleId: number) => Promise<void>;
 }
 
-// ── Eye icon ──────────────────────────────────────────────────────────────────
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
     <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
@@ -36,7 +35,6 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
-// ── Edit size modal ────────────────────────────────────────────────────────────
 function SizeEditModal({ size, onConfirm, onClose }: {
   size: SizeData;
   onConfirm: (number: string, quantity: number) => void;
@@ -44,11 +42,9 @@ function SizeEditModal({ size, onConfirm, onClose }: {
 }) {
   const [num, setNum] = useState(size.number);
   const [qty, setQty] = useState(size.quantity);
-
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
-      onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }} onClick={onClose}>
       <div className="bg-[#111] border border-gucha-border rounded-2xl p-5 w-72 shadow-card animate-fade-up"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
@@ -57,7 +53,7 @@ function SizeEditModal({ size, onConfirm, onClose }: {
         </div>
         <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Número de talla</label>
         <select value={num} onChange={(e) => setNum(e.target.value)}
-          className="w-full mb-3 bg-[#0d0d0d] border border-gucha-border rounded-xl px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-gucha-subtle/60 transition-colors appearance-none cursor-pointer">
+          className="w-full mb-3 bg-[#0d0d0d] border border-gucha-border rounded-xl px-3.5 py-2.5 text-[13px] text-white outline-none appearance-none cursor-pointer">
           {US_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Cantidad en stock</label>
@@ -79,13 +75,23 @@ function SizeEditModal({ size, onConfirm, onClose }: {
   );
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
 export default function StockTable({
   products, onEdit, onDelete, onToggleHidden,
   onToggleSizeHidden, onDeleteSize, onEditSize, onSell, onRevertSale,
 }: Props) {
-  const [saleTarget, setSaleTarget] = useState<{ size: SizeData; product: ProductData } | null>(null);
-  const [editTarget, setEditTarget] = useState<{ size: SizeData; productId: number } | null>(null);
+  // productId → selected sizeId (null = show aggregates)
+  const [selectedSizes, setSelectedSizes] = useState<Record<number, number>>({});
+  const [saleTarget,    setSaleTarget]    = useState<{ size: SizeData; product: ProductData } | null>(null);
+  const [editTarget,    setEditTarget]    = useState<{ size: SizeData; productId: number } | null>(null);
+
+  function toggleSize(productId: number, sizeId: number) {
+    setSelectedSizes((prev) => {
+      if (prev[productId] === sizeId) {
+        const next = { ...prev }; delete next[productId]; return next;
+      }
+      return { ...prev, [productId]: sizeId };
+    });
+  }
 
   if (products.length === 0) {
     return (
@@ -96,16 +102,22 @@ export default function StockTable({
     );
   }
 
-  // Flatten: one row per size
-  type FlatRow = { product: ProductData; size: SizeData; isFirstOfProduct: boolean };
-  const rows: FlatRow[] = products.flatMap((p) => {
-    const sorted = [...p.sizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
-    return sorted.map((s, i) => ({ product: p, size: s, isFirstOfProduct: i === 0 }));
+  // ── Group by brand ─────────────────────────────────────────────────────────
+  const brandMap = new Map<string, { label: string; products: ProductData[] }>();
+  products.forEach((p) => {
+    const key   = p.brand?.name ?? "__sin_marca__";
+    const label = p.brand?.name ?? "Sin marca";
+    if (!brandMap.has(key)) brandMap.set(key, { label, products: [] });
+    brandMap.get(key)!.products.push(p);
   });
+  const groups = [...brandMap.entries()].sort(([a], [b]) =>
+    a === "__sin_marca__" ? 1 : b === "__sin_marca__" ? -1 : a.localeCompare(b)
+  );
 
-  const grandRevenueList = products.reduce((acc, p) =>
+  // ── Revenue totals ─────────────────────────────────────────────────────────
+  const grandList = products.reduce((acc, p) =>
     acc + (p.price ? p.sizes.reduce((a, s) => a + s.sold * p.price!, 0) : 0), 0);
-  const grandRevenueReal = products.reduce((acc, p) =>
+  const grandReal = products.reduce((acc, p) =>
     acc + p.sizes.reduce((a, s) => a + (s.revenue ?? 0), 0), 0);
 
   return (
@@ -113,30 +125,29 @@ export default function StockTable({
       <div className="space-y-4">
 
         {/* revenue banner */}
-        {(grandRevenueList > 0 || grandRevenueReal > 0) && (
+        {(grandList > 0 || grandReal > 0) && (
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gucha-green-dark/20 border border-gucha-green/20 rounded-xl px-4 py-3">
               <p className="text-[9px] font-bold text-gucha-muted tracking-widest uppercase mb-1">Ingresos de lista</p>
-              <p className="text-[18px] font-black text-white">${grandRevenueList.toFixed(2)}</p>
+              <p className="text-[18px] font-black text-white">${grandList.toFixed(2)}</p>
               <p className="text-[9px] text-gucha-muted mt-0.5">precio original × vendidos</p>
             </div>
             <div className="bg-gucha-green-dark/30 border border-gucha-green/30 rounded-xl px-4 py-3">
               <p className="text-[9px] font-bold text-gucha-green-light tracking-widest uppercase mb-1">💰 Cobrado</p>
-              <p className="text-[18px] font-black text-gucha-green-light">${grandRevenueReal.toFixed(2)}</p>
+              <p className="text-[18px] font-black text-gucha-green-light">${grandReal.toFixed(2)}</p>
               <p className="text-[9px] text-gucha-muted mt-0.5">precio reportado al vender</p>
             </div>
           </div>
         )}
 
-        {/* flat table */}
+        {/* table */}
         <div className="bg-card-gradient border border-gucha-border rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="border-b border-gucha-border/60">
-                  <th className="text-left px-4 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Marca</th>
-                  <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Modelo</th>
-                  <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Talla</th>
+                  <th className="text-left px-4 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Modelo</th>
+                  <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Tallas</th>
                   <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Stock</th>
                   <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Vendidos</th>
                   <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Disp.</th>
@@ -146,126 +157,182 @@ export default function StockTable({
                   <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Acciones</th>
                 </tr>
               </thead>
-              <tbody>
-                {rows.map(({ product: p, size: s, isFirstOfProduct }) => {
-                  const avail       = s.quantity - s.sold;
-                  const out         = avail <= 0;
-                  const revList     = p.price ? s.sold * p.price : null;
-                  const revReal     = s.revenue ?? 0;
-                  const hasDiscount = revList !== null && revReal > 0 && revReal < revList;
-                  const dimmed      = s.hidden || p.hidden;
 
-                  return (
-                    <tr key={s.id}
-                      className={[
-                        "transition-colors",
-                        isFirstOfProduct ? "border-t-2 border-gucha-border/60" : "border-t border-gucha-border/20",
-                        dimmed ? "opacity-40" : out ? "bg-gucha-red-dark/5 hover:bg-gucha-red-dark/10" : "hover:bg-white/[0.02]",
-                      ].join(" ")}>
+              {groups.map(([key, { label, products: groupProducts }]) => {
+                const groupList = groupProducts.reduce((acc, p) =>
+                  acc + (p.price ? p.sizes.reduce((a, s) => a + s.sold * p.price!, 0) : 0), 0);
+                const groupReal = groupProducts.reduce((acc, p) =>
+                  acc + p.sizes.reduce((a, s) => a + (s.revenue ?? 0), 0), 0);
 
-                      {/* Marca */}
-                      <td className="px-4 py-2.5">
-                        {(p.brand?.name || p.modelNum) ? (
-                          <span className="text-[9px] font-bold text-gucha-red tracking-widest uppercase">
-                            {p.brand?.name ?? p.modelNum}
-                          </span>
-                        ) : (
-                          <span className="text-gucha-muted/40">—</span>
-                        )}
-                      </td>
-
-                      {/* Modelo + acciones de producto */}
-                      <td className="px-3 py-2.5 max-w-[180px]">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className={`text-[12px] font-semibold truncate flex-1 ${p.hidden ? "line-through text-gucha-muted" : "text-white"}`}>
-                            {p.name}
-                          </span>
-                          <div className="flex gap-0.5 flex-shrink-0">
-                            <button onClick={() => onEdit(p)} title="Editar modelo"
-                              className="w-5 h-5 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60 transition-colors text-[10px]">✎</button>
-                            <button onClick={() => onToggleHidden(p.id, !p.hidden)} title={p.hidden ? "Mostrar" : "Ocultar"}
-                              className={`w-5 h-5 flex items-center justify-center rounded-md border transition-colors ${p.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
-                              <EyeIcon open={!p.hidden} />
-                            </button>
-                            <button onClick={() => onDelete(p.id)} title="Eliminar modelo"
-                              className="w-5 h-5 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Talla */}
-                      <td className="px-3 py-2.5 text-center">
-                        <span className={`font-bold ${dimmed ? "line-through text-gucha-muted" : "text-white"}`}>
-                          {s.number}
-                        </span>
-                      </td>
-
-                      {/* Stock */}
-                      <td className="px-3 py-2.5 text-center text-gucha-subtle font-semibold">{s.quantity}</td>
-
-                      {/* Vendidos */}
-                      <td className="px-3 py-2.5 text-center">
-                        <span className={`font-bold ${s.sold > 0 ? "text-gucha-red-light" : "text-gucha-muted"}`}>{s.sold}</span>
-                      </td>
-
-                      {/* Disponibles */}
-                      <td className="px-3 py-2.5 text-center">
-                        <span className={`font-black text-[13px] ${out ? "text-gucha-red/60" : "text-gucha-green-light"}`}>{avail}</span>
-                      </td>
-
-                      {/* Lista */}
-                      <td className="px-3 py-2.5 text-center">
-                        <span className={`font-bold ${revList && hasDiscount ? "text-gucha-muted line-through" : "text-gucha-muted"}`}>
-                          {revList ? `$${revList.toFixed(2)}` : "—"}
-                        </span>
-                      </td>
-
-                      {/* Cobrado */}
-                      <td className="px-3 py-2.5 text-center">
-                        <span className={`font-bold ${revReal > 0 ? "text-gucha-green-light" : "text-gucha-muted/40"}`}>
-                          {revReal > 0 ? `$${revReal.toFixed(2)}` : "—"}
-                        </span>
-                        {hasDiscount && <span className="ml-1 text-[8px] text-yellow-400">🏷</span>}
-                      </td>
-
-                      {/* Estado */}
-                      <td className="px-3 py-2.5 text-center">
-                        {s.hidden || p.hidden
-                          ? <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-border text-gucha-muted border border-gucha-border uppercase tracking-wide">Oculta</span>
-                          : out
-                          ? <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-red-dark/50 text-gucha-red-light border border-gucha-red/20 uppercase tracking-wide">Agotado</span>
-                          : <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-green-dark/60 text-gucha-green-light border border-gucha-green/20 uppercase tracking-wide">
-                              <span className="w-1.5 h-1.5 rounded-full bg-gucha-green-light inline-block animate-pulse-soft" />
-                              Disp.
+                return (
+                  <tbody key={key}>
+                    {/* Brand header row */}
+                    <tr className="border-t-2 border-gucha-border/60 bg-white/[0.03]">
+                      <td colSpan={9} className="px-4 py-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-gucha-red tracking-[0.2em] uppercase">
+                              {label}
                             </span>
-                        }
-                      </td>
-
-                      {/* Acciones de talla */}
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => setSaleTarget({ size: s, product: p })} title="Venta"
-                            className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors text-[10px]">$</button>
-                          <button onClick={() => setEditTarget({ size: s, productId: p.id })} title="Editar talla"
-                            className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60 transition-colors text-[11px]">✎</button>
-                          <button onClick={() => onToggleSizeHidden(p.id, s.id, !s.hidden)} title={s.hidden ? "Mostrar talla" : "Ocultar talla"}
-                            className={`w-6 h-6 flex items-center justify-center rounded-md border transition-colors ${s.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
-                            <EyeIcon open={!s.hidden} />
-                          </button>
-                          <button onClick={() => onDeleteSize(p.id, s.id)} title="Eliminar talla"
-                            className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                            <span className="text-[9px] text-gucha-muted">
+                              {groupProducts.length} {groupProducts.length === 1 ? "modelo" : "modelos"}
+                            </span>
+                          </div>
+                          {(groupList > 0 || groupReal > 0) && (
+                            <div className="flex items-center gap-3">
+                              {groupList > 0 && (
+                                <span className="text-[10px] text-gucha-muted">
+                                  Lista <span className="font-bold text-white">${groupList.toFixed(0)}</span>
+                                </span>
+                              )}
+                              {groupReal > 0 && (
+                                <span className="text-[10px] text-gucha-muted">
+                                  Cobrado <span className="font-bold text-gucha-green-light">${groupReal.toFixed(0)}</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
+
+                    {/* Model rows */}
+                    {groupProducts.map((p) => {
+                      const selId   = selectedSizes[p.id];
+                      const selSize = p.sizes.find((s) => s.id === selId) ?? null;
+                      const sorted  = [...p.sizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
+
+                      // Stats: selected size or aggregates
+                      const stock   = selSize ? selSize.quantity : p.sizes.reduce((a, s) => a + s.quantity, 0);
+                      const sold    = selSize ? selSize.sold     : p.sizes.reduce((a, s) => a + s.sold, 0);
+                      const avail   = stock - sold;
+                      const revList = p.price ? (selSize ? selSize.sold * p.price : sold * p.price) : null;
+                      const revReal = selSize
+                        ? (selSize.revenue ?? 0)
+                        : p.sizes.reduce((a, s) => a + (s.revenue ?? 0), 0);
+                      const hasDiscount = revList !== null && revReal > 0 && revReal < revList;
+                      const isOut   = p.sizes.filter((s) => !s.hidden).every((s) => s.sold >= s.quantity);
+                      const selOut  = selSize ? selSize.sold >= selSize.quantity : isOut;
+
+                      return (
+                        <tr key={p.id}
+                          className={`border-t border-gucha-border/20 transition-colors ${p.hidden ? "opacity-40" : "hover:bg-white/[0.02]"}`}>
+
+                          {/* Modelo + product actions */}
+                          <td className="px-4 py-3 max-w-[200px]">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className={`text-[12px] font-semibold truncate flex-1 ${p.hidden ? "line-through text-gucha-muted" : "text-white"}`}>
+                                {p.name}
+                              </span>
+                              <div className="flex gap-0.5 flex-shrink-0">
+                                <button onClick={() => onEdit(p)} title="Editar modelo"
+                                  className="w-5 h-5 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60 transition-colors text-[10px]">✎</button>
+                                <button onClick={() => onToggleHidden(p.id, !p.hidden)} title={p.hidden ? "Mostrar" : "Ocultar"}
+                                  className={`w-5 h-5 flex items-center justify-center rounded-md border transition-colors ${p.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
+                                  <EyeIcon open={!p.hidden} />
+                                </button>
+                                <button onClick={() => onDelete(p.id)} title="Eliminar modelo"
+                                  className="w-5 h-5 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Size chips */}
+                          <td className="px-3 py-3">
+                            <div className="flex flex-wrap gap-1">
+                              {sorted.map((s) => {
+                                const isSel = selId === s.id;
+                                const sOut  = s.sold >= s.quantity;
+                                return (
+                                  <button key={s.id} onClick={() => toggleSize(p.id, s.id)}
+                                    title={`Talla ${s.number} · ${s.quantity - s.sold} disp.`}
+                                    className={[
+                                      "px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all",
+                                      isSel
+                                        ? "bg-white text-black border-white"
+                                        : s.hidden
+                                        ? "bg-transparent border-gucha-border/30 text-gucha-muted/40 line-through"
+                                        : sOut
+                                        ? "bg-gucha-red-dark/30 border-gucha-red/30 text-gucha-red-light/60"
+                                        : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60",
+                                    ].join(" ")}>
+                                    {s.number}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {selId && (
+                              <p className="text-[9px] text-gucha-muted/60 mt-1">
+                                talla {selSize?.number} · clic para deseleccionar
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Stats */}
+                          <td className="px-3 py-3 text-center font-semibold text-gucha-subtle">{stock}</td>
+                          <td className="px-3 py-3 text-center">
+                            <span className={`font-bold ${sold > 0 ? "text-gucha-red-light" : "text-gucha-muted"}`}>{sold}</span>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <span className={`font-black text-[13px] ${selOut ? "text-gucha-red/60" : "text-gucha-green-light"}`}>{avail}</span>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <span className={`font-bold ${revList && hasDiscount ? "text-gucha-muted line-through" : "text-gucha-muted"}`}>
+                              {revList ? `$${revList.toFixed(2)}` : "—"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <span className={`font-bold ${revReal > 0 ? "text-gucha-green-light" : "text-gucha-muted/40"}`}>
+                              {revReal > 0 ? `$${revReal.toFixed(2)}` : "—"}
+                            </span>
+                            {hasDiscount && <span className="ml-1 text-[8px] text-yellow-400">🏷</span>}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {selSize ? (
+                              selSize.hidden
+                                ? <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-border text-gucha-muted border border-gucha-border uppercase tracking-wide">Oculta</span>
+                                : selOut
+                                ? <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-red-dark/50 text-gucha-red-light border border-gucha-red/20 uppercase tracking-wide">Agotado</span>
+                                : <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-green-dark/60 text-gucha-green-light border border-gucha-green/20 uppercase tracking-wide">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gucha-green-light inline-block animate-pulse-soft" />Disp.
+                                  </span>
+                            ) : (
+                              isOut
+                                ? <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-red-dark/50 text-gucha-red-light border border-gucha-red/20 uppercase tracking-wide">Agotado</span>
+                                : <span className="text-[9px] text-gucha-muted/50">— todas —</span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-3 py-3">
+                            {selSize ? (
+                              <div className="flex items-center justify-center gap-1">
+                                <button onClick={() => setSaleTarget({ size: selSize, product: p })} title="Registrar venta"
+                                  className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors text-[10px]">$</button>
+                                <button onClick={() => setEditTarget({ size: selSize, productId: p.id })} title="Editar talla"
+                                  className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60 transition-colors text-[11px]">✎</button>
+                                <button onClick={() => onToggleSizeHidden(p.id, selSize.id, !selSize.hidden)} title={selSize.hidden ? "Mostrar" : "Ocultar"}
+                                  className={`w-6 h-6 flex items-center justify-center rounded-md border transition-colors ${selSize.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
+                                  <EyeIcon open={!selSize.hidden} />
+                                </button>
+                                <button onClick={() => onDeleteSize(p.id, selSize.id)} title="Eliminar talla"
+                                  className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                              </div>
+                            ) : (
+                              <p className="text-[9px] text-gucha-muted/40 text-center">← selecciona</p>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                );
+              })}
             </table>
           </div>
         </div>
       </div>
 
-      {/* ── SaleModal ── */}
       {saleTarget && (
         <SaleModal
           sizeId={saleTarget.size.id}
@@ -281,7 +348,6 @@ export default function StockTable({
         />
       )}
 
-      {/* ── SizeEditModal ── */}
       {editTarget && (
         <SizeEditModal
           size={editTarget.size}
