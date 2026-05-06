@@ -577,12 +577,12 @@ export default function HomePage() {
                     <button
                       onClick={() => downloadInventoryExcel(products)}
                       title="Descargar inventario en Excel"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gucha-border bg-[#0d0d0d] text-gucha-muted hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors text-[11px] font-semibold"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[11px] font-bold hover:bg-gucha-green/20 transition-all whitespace-nowrap"
                     >
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
                       </svg>
-                      Excel
+                      Descargar Excel
                     </button>
                     {editMode && (
                       <button onClick={openAdd}
@@ -685,12 +685,12 @@ export default function HomePage() {
                 <button
                   onClick={() => downloadInventoryExcel(products)}
                   title="Descargar inventario en Excel"
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-gucha-border bg-[#0d0d0d] text-gucha-muted hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors text-[11px] font-semibold"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[11px] font-bold hover:bg-gucha-green/20 transition-all whitespace-nowrap"
                 >
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
                   </svg>
-                  Excel
+                  Descargar Excel
                 </button>
                 {!loading && (
                   <span className="text-[11px] text-gucha-muted ml-auto">
