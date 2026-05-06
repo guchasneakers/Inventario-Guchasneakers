@@ -76,8 +76,8 @@ export default function ProductCard({
 
       <div className="pl-4 pr-4 pt-4 pb-3 ml-0.5">
 
-        {/* top row */}
-        <div className="flex gap-3.5 items-start mb-3">
+        {/* top row — foto izquierda, texto derecha; baja si no hay espacio */}
+        <div className="flex flex-wrap gap-3.5 items-start mb-3">
 
           {/* image */}
           <div
@@ -102,8 +102,8 @@ export default function ProductCard({
             )}
           </div>
 
-          {/* info */}
-          <div className="flex-1 min-w-0 pt-0.5">
+          {/* info — se mueve debajo de la foto si el espacio es menor a 130px */}
+          <div className="flex-1 min-w-[130px] pt-0.5">
             <div className="flex items-start justify-between mb-0.5">
               {(product.brand?.name || product.modelNum) ? (
                 <span className="text-[9px] font-bold text-gucha-red tracking-[0.2em] uppercase">
@@ -114,36 +114,28 @@ export default function ProductCard({
               {/* admin actions — solo en modo edición */}
               {isAdmin && editMode && (
                 <div className="flex gap-1 -mt-0.5 -mr-0.5">
-                  <button
-                    onClick={() => onEdit(product)}
-                    title="Editar producto"
-                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle transition-colors text-[11px]"
-                  >
+                  <button onClick={() => onEdit(product)} title="Editar producto"
+                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle transition-colors text-[11px]">
                     ✎
                   </button>
-                  <button
-                    onClick={() => onToggleHidden?.(product.id, !product.hidden)}
+                  <button onClick={() => onToggleHidden?.(product.id, !product.hidden)}
                     title={product.hidden ? "Mostrar producto" : "Ocultar producto"}
                     className={`w-6 h-6 flex items-center justify-center rounded-lg border transition-colors ${
                       product.hidden
                         ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light"
                         : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"
-                    }`}
-                  >
+                    }`}>
                     <EyeIcon open={!product.hidden} />
                   </button>
-                  <button
-                    onClick={() => onDelete(product.id)}
-                    title="Eliminar producto"
-                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[10px]"
-                  >
+                  <button onClick={() => onDelete(product.id)} title="Eliminar producto"
+                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[10px]">
                     ✕
                   </button>
                 </div>
               )}
             </div>
 
-            <p className={`text-[13px] font-semibold leading-snug mb-2 pr-1 ${product.hidden ? "line-through text-gucha-muted" : "text-white"}`}>
+            <p className={`text-[13px] font-semibold leading-snug mb-2 ${product.hidden ? "line-through text-gucha-muted" : "text-white"}`}>
               {product.name}
             </p>
 
@@ -172,12 +164,14 @@ export default function ProductCard({
           </div>
         </div>
 
-        {/* progress bar */}
+        {/* progress bar — vendidos solo visible para admin */}
         {totalPairs > 0 && (
           <div className="mb-3">
             <div className="flex justify-between items-center mb-1">
               <span className="text-[9px] text-gucha-muted tracking-widest">TALLAS</span>
-              <span className="text-[9px] text-gucha-muted">{soldPairs}/{totalPairs} vendidos</span>
+              {isAdmin && (
+                <span className="text-[9px] text-gucha-muted">{soldPairs}/{totalPairs} vendidos</span>
+              )}
             </div>
             <div className="h-[2px] bg-gucha-border rounded-full overflow-hidden">
               <div

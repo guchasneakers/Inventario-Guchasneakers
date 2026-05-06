@@ -32,6 +32,7 @@ export interface Stats {
   totalProducts: number;
   totalStock: number;
   totalSold: number;
+  totalBrands: number;
 }
 
 export type SizeFormEntry = {

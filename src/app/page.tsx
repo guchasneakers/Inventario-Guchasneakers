@@ -14,11 +14,12 @@ import SalesRegister    from "@/components/SalesRegister";
 import FilterBar, { defaultFilters, type Filters } from "@/components/FilterBar";
 import type { BrandData, ProductData, ProductFormData, Stats as StatsType } from "@/types";
 
-function computeStats(products: ProductData[]): StatsType {
+function computeStats(products: ProductData[], brands: BrandData[]): StatsType {
   return {
     totalProducts: products.length,
     totalStock:    products.reduce((acc, p) => acc + p.sizes.reduce((s, sz) => s + sz.quantity - sz.sold, 0), 0),
     totalSold:     products.reduce((acc, p) => acc + p.sizes.reduce((s, sz) => s + sz.sold, 0), 0),
+    totalBrands:   brands.length,
   };
 }
 
@@ -290,7 +291,7 @@ export default function HomePage() {
     return result;
   }, [products, filters, isAdmin]);
 
-  const stats = computeStats(products);
+  const stats = computeStats(products, brands);
 
   const waSvg = (
     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current flex-shrink-0">
@@ -299,25 +300,42 @@ export default function HomePage() {
   );
 
   // ── Sidebar content (shared between mobile header & desktop sidebar) ──────
+  const adminButton = isAdmin ? (
+    <button onClick={handleLogout}
+      className="flex items-center gap-1.5 text-[9px] font-bold text-gucha-muted hover:text-gucha-red-light border border-gucha-border rounded-full px-2.5 py-1 transition-colors whitespace-nowrap">
+      <span className="w-1.5 h-1.5 rounded-full bg-gucha-green-light inline-block" />
+      Admin · Salir
+    </button>
+  ) : (
+    <button onClick={() => setShowLogin(true)}
+      className="text-[9px] font-bold text-gucha-muted hover:text-white border border-gucha-border rounded-full px-2.5 py-1 transition-colors whitespace-nowrap">
+      Admin
+    </button>
+  );
+
   const sidebarContent = (
     <>
-      <GuchaLogo />
-      <div className="flex items-center justify-between mb-5">
-        <MonthTag />
-        {isAdmin ? (
-          <button onClick={handleLogout}
-            className="flex items-center gap-1.5 text-[9px] font-bold text-gucha-muted hover:text-gucha-red-light border border-gucha-border rounded-full px-2.5 py-1 transition-colors">
-            <span className="w-1.5 h-1.5 rounded-full bg-gucha-green-light inline-block" />
-            Admin · Salir
-          </button>
-        ) : (
-          <button onClick={() => setShowLogin(true)}
-            className="text-[9px] font-bold text-gucha-muted hover:text-white border border-gucha-border rounded-full px-2.5 py-1 transition-colors">
-            Admin
-          </button>
-        )}
+      {/* Desktop: logo centrado */}
+      <div className="hidden md:block">
+        <GuchaLogo />
       </div>
-      <Stats stats={stats} />
+
+      {/* Mobile: header compacto en una sola fila */}
+      <div className="flex md:hidden items-center gap-3 mt-3 mb-4">
+        <img src="/logo.png" alt="Gucha Sneakers" className="w-10 h-auto drop-shadow-[0_0_8px_rgba(204,34,34,0.5)]" />
+        <div className="flex-1 min-w-0">
+          <MonthTag />
+        </div>
+        {adminButton}
+      </div>
+
+      {/* Desktop: mes + botón admin */}
+      <div className="hidden md:flex items-center justify-between mb-5">
+        <MonthTag />
+        {adminButton}
+      </div>
+
+      <Stats stats={stats} isAdmin={isAdmin} />
       <SearchBar value={search} onChange={setSearch} />
       <FilterBar
         filters={filters}

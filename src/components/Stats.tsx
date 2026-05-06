@@ -2,13 +2,17 @@
 
 import type { Stats } from "@/types";
 
-interface Props { stats: Stats }
+interface Props { stats: Stats; isAdmin: boolean }
 
-export default function Stats({ stats }: Props) {
-  const items = [
+export default function Stats({ stats, isAdmin }: Props) {
+  const items = isAdmin ? [
     { label: "MODELOS",  value: stats.totalProducts, accent: false },
     { label: "PARES",    value: stats.totalStock,    accent: true  },
     { label: "VENDIDOS", value: stats.totalSold,     accent: false },
+  ] : [
+    { label: "MARCAS",      value: stats.totalBrands,   accent: false },
+    { label: "MODELOS",     value: stats.totalProducts, accent: true  },
+    { label: "PARES DISP.", value: stats.totalStock,    accent: false },
   ];
 
   return (
