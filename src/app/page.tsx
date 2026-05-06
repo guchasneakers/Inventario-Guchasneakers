@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import GuchaLogo    from "@/components/GuchaLogo";
 import Stats        from "@/components/Stats";
@@ -8,7 +8,11 @@ import SearchBar    from "@/components/SearchBar";
 import ProductCard  from "@/components/ProductCard";
 import ProductModal from "@/components/ProductModal";
 import LoginModal   from "@/components/LoginModal";
-import type { ProductData, ProductFormData, Stats as StatsType } from "@/types";
+import StockTable     from "@/components/StockTable";
+import SalesRegister  from "@/components/SalesRegister";
+import BrandManager   from "@/components/BrandManager";
+import FilterBar, { defaultFilters, type Filters } from "@/components/FilterBar";
+import type { BrandData, ProductData, ProductFormData, Stats as StatsType } from "@/types";
 
 function computeStats(products: ProductData[]): StatsType {
   return {
@@ -18,62 +22,15 @@ function computeStats(products: ProductData[]): StatsType {
   };
 }
 
-// ── Editable month ───────────────────────────────────────────────────────────
-function MonthTag({ isAdmin }: { isAdmin: boolean }) {
-  const [month,    setMonth]    = useState("…");
-  const [editing,  setEditing]  = useState(false);
-  const [draft,    setDraft]    = useState("");
-  const [saving,   setSaving]   = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    fetch("/api/settings/month")
-      .then((r) => r.json())
-      .then((d) => setMonth(d.value ?? "Mayo 2026"));
-  }, []);
-
-  function startEdit() {
-    if (!isAdmin) return;
-    setDraft(month);
-    setEditing(true);
-    setTimeout(() => inputRef.current?.select(), 50);
-  }
-
-  async function save() {
-    if (!draft.trim() || draft === month) { setEditing(false); return; }
-    setSaving(true);
-    const res = await fetch("/api/settings/month", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value: draft.trim() }),
-    });
-    const data = await res.json();
-    setMonth(data.value);
-    setEditing(false);
-    setSaving(false);
-  }
-
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={save}
-        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
-        disabled={saving}
-        className="text-[9px] font-bold tracking-[0.3em] text-gucha-red bg-transparent border-b border-gucha-red/40 outline-none w-28 uppercase"
-      />
-    );
-  }
+// ── Dynamic month ─────────────────────────────────────────────────────────────
+function MonthTag() {
+  const month = new Intl.DateTimeFormat("es", { month: "long", year: "numeric" })
+    .format(new Date());
+  const display = month.charAt(0).toUpperCase() + month.slice(1);
 
   return (
-    <span
-      onClick={startEdit}
-      title={isAdmin ? "Clic para editar mes" : undefined}
-      className={`text-[9px] font-bold tracking-[0.3em] text-gucha-muted uppercase ${isAdmin ? "cursor-pointer hover:text-gucha-red transition-colors" : ""}`}
-    >
-      Inventario · {month}
-      {isAdmin && <span className="ml-1 opacity-40">✎</span>}
+    <span className="text-[9px] font-bold tracking-[0.3em] text-gucha-muted uppercase">
+      Inventario · {display}
     </span>
   );
 }
@@ -81,6 +38,9 @@ function MonthTag({ isAdmin }: { isAdmin: boolean }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [products,    setProducts]    = useState<ProductData[]>([]);
+  const [viewMode,    setViewMode]    = useState<"cards" | "table" | "sales" | "brands">("cards");
+  const [brands,      setBrands]      = useState<BrandData[]>([]);
+  const [filters,     setFilters]     = useState<Filters>(defaultFilters);
   const [search,      setSearch]      = useState("");
   const [loading,     setLoading]     = useState(true);
   const [isAdmin,     setIsAdmin]     = useState(false);
@@ -116,9 +76,16 @@ export default function HomePage() {
     return `https://wa.me/13478180549?text=${encodeURIComponent(msg)}`;
   }
 
+  const fetchBrands = useCallback(async () => {
+    const res  = await fetch("/api/brands");
+    const data = await res.json();
+    setBrands(Array.isArray(data) ? data : []);
+  }, []);
+
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setIsAdmin(d.isAdmin ?? false));
-  }, []);
+    fetchBrands();
+  }, [fetchBrands]);
 
   const fetchProducts = useCallback(async (q = "") => {
     const res  = await fetch(`/api/products${q ? `?search=${encodeURIComponent(q)}` : ""}`);
@@ -157,20 +124,148 @@ export default function HomePage() {
     await fetchProducts(search);
   }
 
-  async function handleToggleSize(productId: number, sizeId: number, sold: number) {
+  async function handleToggleHidden(productId: number, hidden: boolean) {
+    await fetch(`/api/products/${productId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hidden }),
+    });
+    setProducts((prev) =>
+      prev.map((p) => p.id === productId ? { ...p, hidden } : p)
+    );
+    showToast(hidden ? "Producto ocultado" : "Producto visible");
+  }
+
+  async function handleToggleSizeHidden(productId: number, sizeId: number, hidden: boolean) {
     await fetch(`/api/products/${productId}/sizes/${sizeId}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sold }),
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hidden }),
     });
     setProducts((prev) =>
       prev.map((p) => p.id !== productId ? p : {
-        ...p, sizes: p.sizes.map((s) => s.id === sizeId ? { ...s, sold } : s),
+        ...p,
+        sizes: p.sizes.map((s) => s.id === sizeId ? { ...s, hidden } : s),
       })
     );
+    showToast(hidden ? "Talla ocultada" : "Talla visible");
+  }
+
+  async function handleDeleteSize(productId: number, sizeId: number) {
+    if (!confirm("¿Eliminar esta talla?")) return;
+    await fetch(`/api/products/${productId}/sizes/${sizeId}`, { method: "DELETE" });
+    setProducts((prev) =>
+      prev.map((p) => p.id !== productId ? p : {
+        ...p,
+        sizes: p.sizes.filter((s) => s.id !== sizeId),
+      })
+    );
+    showToast("Talla eliminada");
+  }
+
+  async function handleAddSize(productId: number, number: string, quantity: number) {
+    const res  = await fetch(`/api/products/${productId}/sizes`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ number, quantity }),
+    });
+    const size = await res.json();
+    setProducts((prev) =>
+      prev.map((p) => p.id !== productId ? p : { ...p, sizes: [...p.sizes, size] })
+    );
+    showToast("Talla agregada");
+  }
+
+  async function handleEditSize(productId: number, sizeId: number, number: string, quantity: number) {
+    const res  = await fetch(`/api/products/${productId}/sizes/${sizeId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ number, quantity }),
+    });
+    const size = await res.json();
+    setProducts((prev) =>
+      prev.map((p) => p.id !== productId ? p : {
+        ...p, sizes: p.sizes.map((s) => s.id === sizeId ? { ...s, ...size } : s),
+      })
+    );
+    showToast("Talla actualizada");
+  }
+
+  async function handleSale(productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) {
+    const res  = await fetch("/api/sales", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sizeId, quantity: qty, pricePerPair: price, buyerName: buyer, note }),
+    });
+    const data = await res.json();
+    if (data.updatedSize) {
+      const { id: uid, sold, revenue } = data.updatedSize;
+      setProducts((prev) =>
+        prev.map((p) => p.id !== productId ? p : {
+          ...p, sizes: p.sizes.map((s) => s.id === uid ? { ...s, sold, revenue } : s),
+        })
+      );
+    }
+    showToast("Venta registrada ✓");
+  }
+
+  async function handleRevertSale(saleId: number) {
+    const res  = await fetch(`/api/sales/${saleId}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.updatedSize) {
+      const { id: uid, sold, revenue } = data.updatedSize;
+      setProducts((prev) =>
+        prev.map((p) => {
+          if (!p.sizes.some((s) => s.id === uid)) return p;
+          return { ...p, sizes: p.sizes.map((s) => s.id === uid ? { ...s, sold, revenue } : s) };
+        })
+      );
+    }
+    showToast("Venta revertida");
   }
 
   function openAdd()                { setEditProduct(null); setModalOpen(true); }
   function openEdit(p: ProductData) { setEditProduct(p);    setModalOpen(true); }
+
+  // ── Tallas únicas para el filtro ─────────────────────────────────────────
+  const uniqueSizes = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => p.sizes.forEach((s) => set.add(s.number)));
+    return [...set].sort((a, b) => parseFloat(a) - parseFloat(b));
+  }, [products]);
+
+  // ── Productos filtrados ───────────────────────────────────────────────────
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      // Marca
+      if (filters.brandId !== null && p.brandId !== filters.brandId) return false;
+
+      // Talla
+      if (filters.size) {
+        const match = isAdmin
+          ? p.sizes.some((s) => s.number === filters.size)
+          : p.sizes.some((s) => s.number === filters.size && !s.hidden && s.sold < s.quantity);
+        if (!match) return false;
+      }
+
+      // Admin: Estado
+      if (isAdmin) {
+        if (filters.status === "available") {
+          if (!p.sizes.some((s) => !s.hidden && s.sold < s.quantity)) return false;
+        } else if (filters.status === "soldout") {
+          const visible = p.sizes.filter((s) => !s.hidden);
+          if (visible.length === 0 || visible.some((s) => s.sold < s.quantity)) return false;
+        } else if (filters.status === "hidden") {
+          if (!p.hidden) return false;
+        }
+      }
+
+      // Cliente: Solo disponibles
+      if (!isAdmin && filters.onlyAvailable) {
+        if (!p.sizes.some((s) => !s.hidden && s.sold < s.quantity)) return false;
+      }
+
+      return true;
+    });
+  }, [products, filters, isAdmin]);
 
   const stats = computeStats(products);
 
@@ -185,7 +280,7 @@ export default function HomePage() {
     <>
       <GuchaLogo />
       <div className="flex items-center justify-between mb-5">
-        <MonthTag isAdmin={isAdmin} />
+        <MonthTag />
         {isAdmin ? (
           <button onClick={handleLogout}
             className="flex items-center gap-1.5 text-[9px] font-bold text-gucha-muted hover:text-gucha-red-light border border-gucha-border rounded-full px-2.5 py-1 transition-colors">
@@ -201,6 +296,13 @@ export default function HomePage() {
       </div>
       <Stats stats={stats} />
       <SearchBar value={search} onChange={setSearch} />
+      <FilterBar
+        filters={filters}
+        onChange={setFilters}
+        brands={brands}
+        sizes={uniqueSizes}
+        isAdmin={isAdmin}
+      />
       {/* WhatsApp — solo desktop sidebar */}
       {hasSelection ? (
         <a
@@ -234,22 +336,24 @@ export default function HomePage() {
   );
 
   // ── Product grid ──────────────────────────────────────────────────────────
+  const hasActiveFilters = filters.brandId !== null || filters.size !== "" || filters.status !== "all" || filters.onlyAvailable;
+
   const productGrid = (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {loading && [...Array(4)].map((_, i) => (
         <div key={i} className="bg-card-gradient border border-gucha-border rounded-2xl h-44 animate-pulse-soft" />
       ))}
 
-      {!loading && products.length === 0 && (
+      {!loading && filteredProducts.length === 0 && (
         <div className="col-span-2 text-center py-16">
           <div className="text-5xl mb-4 opacity-20">👟</div>
           <p className="text-gucha-subtle text-[13px] mb-1 font-medium">
-            {search ? "Sin resultados" : "Inventario vacío"}
+            {search || hasActiveFilters ? "Sin resultados" : "Inventario vacío"}
           </p>
           <p className="text-gucha-muted text-[11px] mb-5">
-            {search ? `No se encontró "${search}"` : "Agrega tu primer modelo para empezar"}
+            {search ? `No se encontró "${search}"` : hasActiveFilters ? "Prueba otros filtros" : "Agrega tu primer modelo para empezar"}
           </p>
-          {!search && isAdmin && (
+          {!search && !hasActiveFilters && isAdmin && (
             <button onClick={openAdd}
               className="text-[11px] font-bold text-gucha-green-light border border-gucha-green/30 bg-gucha-green-dark/40 rounded-xl px-5 py-2.5 hover:bg-gucha-green/20 transition-colors">
               + Nuevo producto
@@ -258,13 +362,14 @@ export default function HomePage() {
         </div>
       )}
 
-      {products.map((product, i) => (
+      {filteredProducts.map((product, i) => (
         <ProductCard
           key={product.id}
           product={product}
           index={i}
           isAdmin={isAdmin}
-          onToggleSize={handleToggleSize}
+          onSell={handleSale}
+          onRevertSale={handleRevertSale}
           onEdit={openEdit}
           onDelete={handleDelete}
           selectedSizes={product.sizes.filter((s) => selection[s.id]).map((s) => s.id)}
@@ -303,19 +408,85 @@ export default function HomePage() {
               </h1>
               {!loading && (
                 <span className="text-[11px] text-gucha-muted">
-                  ({products.length} {products.length === 1 ? "modelo" : "modelos"})
+                  ({filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""} {filteredProducts.length === 1 ? "modelo" : "modelos"})
                 </span>
               )}
             </div>
-            {isAdmin && (
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  {/* Tarjetas / Tabla toggle */}
+                  <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
+                    <button
+                      onClick={() => setViewMode("cards")}
+                      title="Vista tarjetas"
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${viewMode === "cards" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                    >
+                      ▦ Tarjetas
+                    </button>
+                    <button
+                      onClick={() => setViewMode("table")}
+                      title="Vista tabla"
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${viewMode === "table" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                    >
+                      ≡ Tabla
+                    </button>
+                  </div>
+                  {/* Ventas — botón separado */}
+                  <button
+                    onClick={() => setViewMode(viewMode === "sales" ? "cards" : "sales")}
+                    title="Registro de ventas"
+                    className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
+                      viewMode === "sales"
+                        ? "bg-gucha-dark border-gucha-subtle/40 text-white"
+                        : "border-gucha-border bg-[#0d0d0d] text-gucha-muted hover:text-white"
+                    }`}
+                  >
+                    📋 Ventas
+                  </button>
+                  {/* Marcas — botón separado */}
+                  <button
+                    onClick={() => setViewMode(viewMode === "brands" ? "cards" : "brands")}
+                    title="Gestionar marcas"
+                    className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
+                      viewMode === "brands"
+                        ? "bg-gucha-dark border-gucha-subtle/40 text-white"
+                        : "border-gucha-border bg-[#0d0d0d] text-gucha-muted hover:text-white"
+                    }`}
+                  >
+                    Marcas
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {isAdmin && viewMode !== "sales" && viewMode !== "brands" && (
+            <div className="flex justify-end mb-4">
               <button onClick={openAdd}
                 className="flex items-center gap-2 bg-red-gradient text-white text-[12px] font-bold px-4 py-2 rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-red-glow">
                 + Agregar producto
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
-          {productGrid}
+          {isAdmin && viewMode === "brands"
+            ? <BrandManager onBrandsChange={fetchBrands} />
+            : isAdmin && viewMode === "sales"
+            ? <SalesRegister onRevert={handleRevertSale} />
+            : isAdmin && viewMode === "table"
+            ? <StockTable
+                products={filteredProducts}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+                onToggleHidden={handleToggleHidden}
+                onToggleSizeHidden={handleToggleSizeHidden}
+                onDeleteSize={handleDeleteSize}
+                onEditSize={handleEditSize}
+                onSell={handleSale}
+                onRevertSale={handleRevertSale}
+              />
+            : productGrid}
         </div>
       </div>
 
@@ -332,7 +503,11 @@ export default function HomePage() {
             <span className="text-[10px] font-bold text-gucha-subtle tracking-[0.25em]">
               {search ? "RESULTADOS" : "COLECCIÓN"}
             </span>
-            {!loading && <span className="text-[9px] text-gucha-muted">({products.length})</span>}
+            {!loading && (
+              <span className="text-[9px] text-gucha-muted">
+                ({filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""})
+              </span>
+            )}
           </div>
           {isAdmin && (
             <button onClick={openAdd}
@@ -400,6 +575,7 @@ export default function HomePage() {
       {modalOpen && isAdmin && (
         <ProductModal
           product={editProduct}
+          brands={brands}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
         />

@@ -2,26 +2,38 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import type { ProductData } from "@/types";
+import type { ProductData, SizeData } from "@/types";
 import SizePill from "./SizePill";
 import ImageLightbox from "./ImageLightbox";
+import SaleModal from "./SaleModal";
 
 interface Props {
-  product:        ProductData;
-  index:          number;
-  isAdmin:        boolean;
-  onToggleSize:   (productId: number, sizeId: number, sold: number) => Promise<void>;
-  onEdit:         (product: ProductData) => void;
-  onDelete:       (productId: number) => void;
-  selectedSizes?: number[];
-  onSelectSize?:  (productId: number, sizeId: number) => void;
+  product:         ProductData;
+  index:           number;
+  isAdmin:         boolean;
+  onSell:          (productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) => Promise<void>;
+  onRevertSale:    (saleId: number) => Promise<void>;
+  onEdit:          (product: ProductData) => void;
+  onDelete:        (productId: number) => void;
+  selectedSizes?:  number[];
+  onSelectSize?:   (productId: number, sizeId: number) => void;
 }
 
-export default function ProductCard({ product, index, isAdmin, onToggleSize, onEdit, onDelete, selectedSizes = [], onSelectSize }: Props) {
-  const [lightbox, setLightbox] = useState(false);
+export default function ProductCard({ product, index, isAdmin, onSell, onRevertSale, onEdit, onDelete, selectedSizes = [], onSelectSize }: Props) {
+  const [lightbox,   setLightbox]   = useState(false);
+  const [saleTarget, setSaleTarget] = useState<SizeData | null>(null);
 
-  const totalPairs = product.sizes.reduce((acc, s) => acc + s.quantity, 0);
-  const soldPairs  = product.sizes.reduce((acc, s) => acc + s.sold,     0);
+  function handleAdminToggle(sizeId: number) {
+    const size = product.sizes.find((s) => s.id === sizeId);
+    if (!size) return;
+    setSaleTarget(size);
+  }
+
+  // Tallas visibles en la tarjeta (excluir ocultas)
+  const visibleSizes = product.sizes.filter((s) => !s.hidden);
+
+  const totalPairs = visibleSizes.reduce((acc, s) => acc + s.quantity, 0);
+  const soldPairs  = visibleSizes.reduce((acc, s) => acc + s.sold,     0);
   const available  = totalPairs - soldPairs;
   const isOut      = totalPairs > 0 && available === 0;
   const pct        = totalPairs > 0 ? Math.round((soldPairs / totalPairs) * 100) : 0;
@@ -73,9 +85,9 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
           {/* info */}
           <div className="flex-1 min-w-0 pt-0.5">
             <div className="flex items-start justify-between mb-0.5">
-              {product.modelNum ? (
+              {(product.brand?.name || product.modelNum) ? (
                 <span className="text-[9px] font-bold text-gucha-red tracking-[0.2em] uppercase">
-                  {product.modelNum}
+                  {product.brand?.name ?? product.modelNum}
                 </span>
               ) : <span />}
 
@@ -140,14 +152,14 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
         )}
 
         {/* size pills */}
-        {product.sizes.length > 0 ? (
+        {visibleSizes.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {[...product.sizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number)).map((size) => (
+            {[...visibleSizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number)).map((size) => (
               <SizePill
                 key={size.id}
                 size={size}
                 isAdmin={isAdmin}
-                onToggle={(sizeId, sold) => onToggleSize(product.id, sizeId, sold)}
+                onToggle={handleAdminToggle}
                 selected={selectedSizes.includes(size.id)}
                 onSelect={(sizeId) => onSelectSize?.(product.id, sizeId)}
               />
@@ -158,12 +170,12 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
         )}
 
         {/* hints */}
-        {isAdmin && product.sizes.length > 0 && (
+        {isAdmin && visibleSizes.length > 0 && (
           <p className="text-[9px] text-gucha-muted/50 mt-2 tracking-wide">
-            Toca las tallas para marcar vendido
+            Toca las tallas para registrar ventas
           </p>
         )}
-        {!isAdmin && product.sizes.some((s) => s.sold < s.quantity) && (
+        {!isAdmin && visibleSizes.some((s) => s.sold < s.quantity) && (
           <p className="text-[9px] text-gucha-green-light/50 mt-2 tracking-wide">
             Toca las tallas que te interesan para ordenar
           </p>
@@ -176,6 +188,21 @@ export default function ProductCard({ product, index, isAdmin, onToggleSize, onE
         src={product.imageUrl}
         alt={product.name}
         onClose={() => setLightbox(false)}
+      />
+    )}
+
+    {saleTarget && (
+      <SaleModal
+        sizeId={saleTarget.id}
+        sizeNumber={saleTarget.number}
+        available={saleTarget.quantity - saleTarget.sold}
+        listPrice={product.price ?? undefined}
+        onSell={async (qty, price, buyer, note) => {
+          await onSell(product.id, saleTarget.id, qty, price, buyer, note);
+          setSaleTarget(null);
+        }}
+        onRevert={onRevertSale}
+        onClose={() => setSaleTarget(null)}
       />
     )}
     </>

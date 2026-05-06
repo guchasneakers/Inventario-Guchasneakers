@@ -6,7 +6,7 @@ import type { SizeData } from "@/types";
 interface Props {
   size:       SizeData;
   isAdmin:    boolean;
-  onToggle:   (sizeId: number, sold: number) => Promise<void>;
+  onToggle:   (sizeId: number) => void;
   selected?:  boolean;
   onSelect?:  (sizeId: number) => void;
 }
@@ -19,7 +19,7 @@ export default function SizePill({ size, isAdmin, onToggle, selected = false, on
     if (loading) return;
     if (isAdmin) {
       setLoading(true);
-      await onToggle(size.id, isSold ? 0 : size.quantity);
+      onToggle(size.id);
       setLoading(false);
     } else if (!isSold && onSelect) {
       onSelect(size.id);
@@ -51,9 +51,6 @@ export default function SizePill({ size, isAdmin, onToggle, selected = false, on
       ].join(" ")}
     >
       {size.number}
-      {size.quantity > 1 && !isSold && (
-        <span className="ml-0.5 text-[9px] font-bold text-gucha-red">×{size.quantity}</span>
-      )}
       {isSold && (
         <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-gucha-red/60 flex items-center justify-center">
           <span className="text-[6px] text-white font-bold">✓</span>

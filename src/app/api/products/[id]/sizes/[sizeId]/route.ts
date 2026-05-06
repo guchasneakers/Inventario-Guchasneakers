@@ -17,12 +17,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Talla no encontrada" }, { status: 404 });
     }
 
-    const sold    = body.sold !== undefined ? Number(body.sold) : existing.sold;
-    const clamped = Math.min(Math.max(0, sold), existing.quantity);
+    const data: Record<string, unknown> = {};
+    if (body.number   !== undefined) data.number   = String(body.number).trim();
+    if (body.quantity !== undefined) data.quantity = Math.max(1, Number(body.quantity));
+    if (body.sold     !== undefined) data.sold     = Math.min(Math.max(0, Number(body.sold)), body.quantity !== undefined ? Math.max(1, Number(body.quantity)) : existing.quantity);
+    if (body.revenue  !== undefined) data.revenue  = Math.max(0, Number(body.revenue));
+    if (body.hidden   !== undefined) data.hidden   = Boolean(body.hidden);
 
     const size = await prisma.size.update({
       where: { id: Number(sizeId) },
-      data:  { sold: clamped },
+      data,
     });
 
     return NextResponse.json(size);

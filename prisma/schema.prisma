@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Brand {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
 model Product {
   id          Int      @id @default(autoincrement())
   modelNum    String   @default("")
@@ -14,8 +21,11 @@ model Product {
   description String?
   price       Float?
   imageUrl    String?
+  hidden      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  brandId     Int?
+  brand       Brand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
   sizes       Size[]
 }
 
@@ -24,10 +34,26 @@ model Size {
   number    String
   quantity  Int     @default(1)
   sold      Int     @default(0)
+  revenue   Float   @default(0)
+  hidden    Boolean @default(false)
   productId Int
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sales     Sale[]
 
   @@index([productId])
+}
+
+model Sale {
+  id           Int      @id @default(autoincrement())
+  sizeId       Int
+  size         Size     @relation(fields: [sizeId], references: [id], onDelete: Cascade)
+  quantity     Int
+  pricePerPair Float
+  buyerName    String?
+  note         String?
+  createdAt    DateTime @default(now())
+
+  @@index([sizeId])
 }
 
 model Setting {

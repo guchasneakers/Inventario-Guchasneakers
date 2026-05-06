@@ -1,32 +1,37 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ProductData, ProductFormData, SizeFormEntry } from "@/types";
+import type { BrandData, ProductData, ProductFormData } from "@/types";
 import ImageUpload from "./ImageUpload";
 
 interface Props {
   product: ProductData | null;
+  brands:  BrandData[];
   onClose: () => void;
   onSave:  (data: ProductFormData, id?: number) => Promise<void>;
 }
 
 const empty: ProductFormData = {
-  modelNum: "", name: "", description: "", price: "", imageUrl: "", sizes: [],
+  brandId: "", name: "", description: "", price: "", imageUrl: "", sizes: [],
 };
 
 const labelCls = "block text-[9px] font-bold text-gucha-muted tracking-[0.2em] uppercase mb-1.5";
 const inputCls = "w-full bg-[#0d0d0d] border border-gucha-border rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder-gucha-muted/60 outline-none focus:border-gucha-subtle/60 transition-colors duration-200";
 
-export default function ProductModal({ product, onClose, onSave }: Props) {
+const US_SIZES = [
+  "3.5","4","4.5","5","5.5","6","6.5","7","7.5","8","8.5",
+  "9","9.5","10","10.5","11","11.5","12","12.5","13","13.5","14","15","16",
+];
+
+export default function ProductModal({ product, brands, onClose, onSave }: Props) {
   const [form,    setForm]    = useState<ProductFormData>(empty);
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState("");
-  const [newSize, setNewSize] = useState<SizeFormEntry>({ number: "", quantity: 1 });
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setForm(product ? {
-      modelNum:    product.modelNum,
+      brandId:     product.brandId != null ? String(product.brandId) : "",
       name:        product.name,
       description: product.description ?? "",
       price:       product.price != null ? String(product.price) : "",
@@ -41,10 +46,21 @@ export default function ProductModal({ product, onClose, onSave }: Props) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  function addSize() {
-    if (!newSize.number.trim()) return;
-    setForm((f) => ({ ...f, sizes: [...f.sizes, { ...newSize }] }));
-    setNewSize({ number: "", quantity: 1 });
+  function toggleSize(num: string) {
+    setForm((f) => {
+      const exists = f.sizes.some((s) => s.number === num);
+      if (exists) return { ...f, sizes: f.sizes.filter((s) => s.number !== num) };
+      return { ...f, sizes: [...f.sizes, { number: num, quantity: 1 }] };
+    });
+  }
+
+  function adjustQty(num: string, delta: number) {
+    setForm((f) => ({
+      ...f,
+      sizes: f.sizes.map((s) =>
+        s.number === num ? { ...s, quantity: Math.max(1, s.quantity + delta) } : s
+      ),
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -95,12 +111,34 @@ export default function ProductModal({ product, onClose, onSave }: Props) {
             />
           </div>
 
-          {/* model num */}
+          {/* brand */}
           <div>
-            <label className={labelCls}>Número de modelo</label>
-            <input ref={firstInputRef} placeholder="Ej: MODELO #05"
-              value={form.modelNum} onChange={(e) => setField("modelNum", e.target.value)}
-              className={inputCls} />
+            <label className={labelCls}>Marca</label>
+            {brands.length === 0 ? (
+              <p className="text-[11px] text-gucha-muted italic py-2">
+                No hay marcas configuradas — agrégalas en la vista <span className="font-bold text-white">🏷 Marcas</span>.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {brands.map((b) => {
+                  const selected = form.brandId === String(b.id);
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setField("brandId", selected ? "" : String(b.id))}
+                      className={`px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all border ${
+                        selected
+                          ? "bg-gucha-red-dark/60 border-gucha-red/50 text-gucha-red-light"
+                          : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50"
+                      }`}
+                    >
+                      {b.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* name */}
@@ -131,39 +169,45 @@ export default function ProductModal({ product, onClose, onSave }: Props) {
           <div>
             <label className={labelCls}>Tallas</label>
 
+            {/* Added sizes with qty steppers */}
             {form.sizes.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2.5 p-3 bg-[#0d0d0d] rounded-xl border border-gucha-border">
-                {[...form.sizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number)).map((s, i) => (
-                  <div key={i} className="flex items-center gap-1.5 bg-gucha-dark border border-gucha-border rounded-lg pl-2.5 pr-1.5 py-1">
-                    <span className="text-[11px] text-white font-semibold">
-                      {s.number}
-                      {s.quantity > 1 && <span className="text-[9px] text-gucha-red ml-0.5">×{s.quantity}</span>}
-                    </span>
-                    <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: f.sizes.filter((_, idx) => idx !== i) }))}
-                      className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gucha-red/30 text-gucha-muted hover:text-gucha-red-light text-[9px] transition-colors">
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                {[...form.sizes]
+                  .sort((a, b) => parseFloat(a.number) - parseFloat(b.number))
+                  .map((s) => (
+                    <div key={s.number} className="flex items-center gap-0.5 bg-gucha-dark border border-gucha-green/30 rounded-lg pl-2 pr-1 py-1">
+                      <span className="text-[11px] text-white font-bold w-7 text-center">{s.number}</span>
+                      <button type="button" onClick={() => adjustQty(s.number, -1)}
+                        className="w-5 h-5 flex items-center justify-center text-gucha-muted hover:text-white text-xs transition-colors">−</button>
+                      <span className="text-[11px] text-gucha-red font-bold w-4 text-center">{s.quantity}</span>
+                      <button type="button" onClick={() => adjustQty(s.number, +1)}
+                        className="w-5 h-5 flex items-center justify-center text-gucha-muted hover:text-white text-xs transition-colors">+</button>
+                      <button type="button" onClick={() => toggleSize(s.number)}
+                        className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gucha-red/30 text-gucha-muted hover:text-gucha-red-light text-[9px] transition-colors ml-0.5">✕</button>
+                    </div>
+                  ))}
               </div>
             )}
 
-            <div className="flex gap-2">
-              <input type="text" placeholder="Talla (7, 8.5…)"
-                value={newSize.number}
-                onChange={(e) => setNewSize((s) => ({ ...s, number: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSize())}
-                className={`${inputCls} flex-1`} />
-              <input type="number" min={1} max={99} title="Cantidad"
-                value={newSize.quantity}
-                onChange={(e) => setNewSize((s) => ({ ...s, quantity: Number(e.target.value) }))}
-                className={`${inputCls} w-16 text-center`} />
-              <button type="button" onClick={addSize}
-                className="w-11 h-[42px] flex items-center justify-center bg-gucha-dark border border-gucha-border rounded-xl text-white text-xl hover:border-gucha-subtle hover:text-gucha-green-light transition-colors">
-                +
-              </button>
+            {/* US size picker */}
+            <div className="flex flex-wrap gap-1.5 p-3 bg-[#0d0d0d] rounded-xl border border-gucha-border">
+              {US_SIZES.map((size) => {
+                const added = form.sizes.some((s) => s.number === size);
+                return (
+                  <button key={size} type="button" onClick={() => toggleSize(size)}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                      added
+                        ? "bg-gucha-green-dark/60 border border-gucha-green/40 text-gucha-green-light"
+                        : "bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50"
+                    }`}>
+                    {size}
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-[9px] text-gucha-muted mt-1.5 tracking-wide">Escribe talla → cantidad → presiona +</p>
+            <p className="text-[9px] text-gucha-muted mt-1.5 tracking-wide">
+              Toca para agregar/quitar · ajusta cantidad con − +
+            </p>
           </div>
 
           {error && (

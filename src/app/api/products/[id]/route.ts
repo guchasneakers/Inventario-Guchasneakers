@@ -29,22 +29,25 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { modelNum, name, description, price, imageUrl } = body;
+    const { brandId, name, description, price, imageUrl, hidden } = body;
 
-    if (!name?.trim()) {
+    if (name !== undefined && !name?.trim()) {
       return NextResponse.json({ error: "El nombre es requerido" }, { status: 400 });
     }
 
+    // Allow partial update (e.g. only toggling hidden)
+    const data: Record<string, unknown> = {};
+    if (brandId     !== undefined) data.brandId     = brandId ? Number(brandId) : null;
+    if (name        !== undefined) data.name        = name.trim();
+    if (description !== undefined) data.description = description?.trim() || null;
+    if (price       !== undefined) data.price       = price != null && price !== "" ? Number(price) : null;
+    if (imageUrl    !== undefined) data.imageUrl    = imageUrl?.trim() || null;
+    if (hidden      !== undefined) data.hidden      = Boolean(hidden);
+
     const product = await prisma.product.update({
       where: { id: Number(id) },
-      data: {
-        modelNum:    modelNum?.trim() ?? "",
-        name:        name.trim(),
-        description: description?.trim() || null,
-        price:       price != null && price !== "" ? Number(price) : null,
-        imageUrl:    imageUrl?.trim() || null,
-      },
-      include: { sizes: { orderBy: { number: "asc" } } },
+      data,
+      include: { brand: true, sizes: { orderBy: { number: "asc" } } },
     });
 
     return NextResponse.json(product);

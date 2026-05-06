@@ -5,13 +5,22 @@ import { isAdminRequest } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") ?? "";
+    const search  = searchParams.get("search") ?? "";
+    const admin   = await isAdminRequest();
+
+    const where: Record<string, unknown> = {};
+    if (!admin) where.hidden = false;
+    if (search)  where.name  = { contains: search, mode: "insensitive" };
 
     const products = await prisma.product.findMany({
-      where: search
-        ? { name: { contains: search, mode: "insensitive" } }
-        : undefined,
-      include: { sizes: { orderBy: { number: "asc" } } },
+      where,
+      include: {
+        brand: true,
+        sizes: {
+          where:   admin ? undefined : { hidden: false },
+          orderBy: { number: "asc" },
+        },
+      },
       orderBy: { createdAt: "asc" },
     });
 
@@ -27,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json();
-    const { modelNum, name, description, price, imageUrl, sizes } = body;
+    const { brandId, name, description, price, imageUrl, sizes } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "El nombre es requerido" }, { status: 400 });
@@ -35,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const product = await prisma.product.create({
       data: {
-        modelNum:    modelNum?.trim() ?? "",
+        brandId:     brandId ? Number(brandId) : null,
         name:        name.trim(),
         description: description?.trim() || null,
         price:       price != null && price !== "" ? Number(price) : null,
@@ -50,7 +59,7 @@ export async function POST(req: NextRequest) {
             : [],
         },
       },
-      include: { sizes: true },
+      include: { brand: true, sizes: true },
     });
 
     return NextResponse.json(product, { status: 201 });
