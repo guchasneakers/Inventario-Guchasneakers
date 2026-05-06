@@ -212,14 +212,18 @@ async function generateSaleInvoice(sale: SaleRecord) {
     <td class="right"><strong>$${total.toFixed(2)}</strong></td>
   </tr>`;
 
+  const fileName = `factura-${sale.id}-gucha-sneakers.pdf`;
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Factura #${sale.id} · Gucha Sneakers</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:Arial,sans-serif;background:#f5f5f5;color:#111;min-height:100vh}
-    .toolbar{position:sticky;top:0;z-index:10;background:#111;padding:12px 24px;display:flex;align-items:center;justify-content:center;gap:12px}
+    .toolbar{position:sticky;top:0;z-index:10;background:#111;padding:12px 24px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
     .toolbar-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;text-decoration:none;border:none;transition:opacity .15s}
-    .btn-wa{background:#25D366;color:#fff}.btn-wa:hover{opacity:.88}
-    .btn-dl{background:#fff;color:#111}.btn-dl:hover{opacity:.88}
+    .toolbar-btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-wa{background:#25D366;color:#fff}.btn-wa:hover:not(:disabled){opacity:.88}
+    .btn-dl{background:#fff;color:#111}.btn-dl:hover:not(:disabled){opacity:.88}
     .invoice{background:#fff;max-width:720px;margin:32px auto;padding:48px;border-radius:12px;box-shadow:0 4px 32px rgba(0,0,0,.10)}
     header{text-align:center;padding-bottom:24px;border-bottom:3px solid #cc2222;margin-bottom:28px}
     header img{width:110px;height:auto;margin-bottom:10px}
@@ -237,24 +241,20 @@ async function generateSaleInvoice(sale: SaleRecord) {
     .total-label{font-size:12px;color:#555;text-align:right;font-weight:bold}
     .total-value{font-size:22px;font-weight:900;color:#cc2222;text-align:right}
     footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #eee}
-    @media print{
-      body{background:#fff}
-      .toolbar{display:none}
-      .invoice{margin:0;padding:32px;box-shadow:none;border-radius:0}
-    }
+    @media print{body{background:#fff}.toolbar{display:none}.invoice{margin:0;padding:32px;box-shadow:none;border-radius:0}}
   </style>
   </head><body>
   <div class="toolbar">
-    <a href="${waUrl}" class="toolbar-btn btn-wa" target="_blank" rel="noopener noreferrer">
+    <button class="toolbar-btn btn-wa" id="btn-wa" onclick="shareAsPdf()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-      Compartir por WhatsApp
-    </a>
-    <button class="toolbar-btn btn-dl" onclick="window.print()">
+      <span id="wa-label">Enviar por WhatsApp</span>
+    </button>
+    <button class="toolbar-btn btn-dl" id="btn-dl" onclick="downloadAsPdf()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Descargar PDF
+      <span id="dl-label">Descargar PDF</span>
     </button>
   </div>
-  <div class="invoice">
+  <div class="invoice" id="invoice">
     <header><img src="${logoSrc}" alt="Gucha Sneakers"/><h1>GUCHA SNEAKERS</h1><p>FREE SHIPPING ACROSS THE USA</p></header>
     <div class="meta">
       <div class="meta-block"><div class="meta-label">Comprador</div><div><strong>${sale.buyerName || "—"}</strong></div>${sale.note ? `<div style="font-size:12px;color:#777;margin-top:4px">${sale.note}</div>` : ""}</div>
@@ -264,6 +264,63 @@ async function generateSaleInvoice(sale: SaleRecord) {
     <tbody>${row}<tr class="total-row"><td colspan="4" class="total-label">Total</td><td class="total-value">$${total.toFixed(2)}</td></tr></tbody></table>
     <footer><p style="font-size:13px;font-weight:bold;color:#333">¡Gracias por tu compra!</p><p style="font-size:11px;color:#aaa;margin-top:4px">Gucha Sneakers · Envío gratis a todo USA</p></footer>
   </div>
+  <script>
+    async function buildPdfBlob() {
+      const { jsPDF } = window.jspdf;
+      const el = document.getElementById('invoice');
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const img = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      const W = pdf.internal.pageSize.getWidth();
+      const H = pdf.internal.pageSize.getHeight();
+      const imgW = W;
+      const imgH = (canvas.height * W) / canvas.width;
+      let y = 0;
+      let remaining = imgH;
+      while (remaining > 0) {
+        pdf.addImage(img, 'PNG', 0, y, imgW, imgH);
+        remaining -= H;
+        y -= H;
+        if (remaining > 0) pdf.addPage();
+      }
+      return pdf.output('blob');
+    }
+
+    async function shareAsPdf() {
+      const btn = document.getElementById('btn-wa');
+      const lbl = document.getElementById('wa-label');
+      btn.disabled = true; lbl.textContent = 'Generando…';
+      try {
+        const blob = await buildPdfBlob();
+        const file = new File([blob], '${fileName}', { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Factura Gucha Sneakers' });
+        } else {
+          triggerDownload(blob);
+        }
+      } catch(e) { if (e.name !== 'AbortError') console.error(e); }
+      finally { btn.disabled = false; lbl.textContent = 'Enviar por WhatsApp'; }
+    }
+
+    async function downloadAsPdf() {
+      const btn = document.getElementById('btn-dl');
+      const lbl = document.getElementById('dl-label');
+      btn.disabled = true; lbl.textContent = 'Generando…';
+      try {
+        const blob = await buildPdfBlob();
+        triggerDownload(blob);
+      } catch(e) { console.error(e); }
+      finally { btn.disabled = false; lbl.textContent = 'Descargar PDF'; }
+    }
+
+    function triggerDownload(blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = '${fileName}';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+  <\/script>
   </body></html>`;
 
   const win = window.open("", "_blank");
