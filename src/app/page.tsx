@@ -10,7 +10,6 @@ import ProductModal from "@/components/ProductModal";
 import LoginModal   from "@/components/LoginModal";
 import StockTable     from "@/components/StockTable";
 import SalesRegister  from "@/components/SalesRegister";
-import BrandManager   from "@/components/BrandManager";
 import FilterBar, { defaultFilters, type Filters } from "@/components/FilterBar";
 import type { BrandData, ProductData, ProductFormData, Stats as StatsType } from "@/types";
 
@@ -38,8 +37,9 @@ function MonthTag() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [products,    setProducts]    = useState<ProductData[]>([]);
-  const [viewMode,    setViewMode]    = useState<"cards" | "table" | "sales" | "brands">("cards");
-  const [brands,      setBrands]      = useState<BrandData[]>([]);
+  const [viewMode,      setViewMode]      = useState<"inventory" | "sales">("inventory");
+  const [inventoryView, setInventoryView] = useState<"cards" | "table">("cards");
+  const [brands,        setBrands]        = useState<BrandData[]>([]);
   const [filters,     setFilters]     = useState<Filters>(defaultFilters);
   const [search,      setSearch]      = useState("");
   const [loading,     setLoading]     = useState(true);
@@ -74,6 +74,10 @@ export default function HomePage() {
     const parts = selectionEntries.map((e) => `modelo ${e.productName} [size ${e.sizeNumber}]`);
     const msg = `Quisiera información sobre el ${parts.join(", ")}.`;
     return `https://wa.me/13478180549?text=${encodeURIComponent(msg)}`;
+  }
+
+  function handleBrandCreated(brand: BrandData) {
+    setBrands((prev) => [...prev, brand].sort((a, b) => a.name.localeCompare(b.name)));
   }
 
   const fetchBrands = useCallback(async () => {
@@ -337,6 +341,7 @@ export default function HomePage() {
 
   // ── Product grid ──────────────────────────────────────────────────────────
   const hasActiveFilters = filters.brandId !== null || filters.size !== "" || filters.status !== "all" || filters.onlyAvailable;
+  const isInventory = viewMode === "inventory";
 
   const productGrid = (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -399,94 +404,87 @@ export default function HomePage() {
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto px-8 py-6">
-          {/* top bar */}
+
+          {/* ── Top bar: sección activa ── */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <div className="w-[3px] h-5 bg-red-gradient rounded-full" />
               <h1 className="text-[13px] font-black text-white tracking-[0.2em]">
-                {search ? "RESULTADOS" : "COLECCIÓN ACTUAL"}
+                {viewMode === "sales" ? "REGISTRO DE VENTAS" : search ? "RESULTADOS" : "INVENTARIO"}
               </h1>
-              {!loading && (
+              {!loading && isInventory && (
                 <span className="text-[11px] text-gucha-muted">
                   ({filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""} {filteredProducts.length === 1 ? "modelo" : "modelos"})
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* Navegación principal admin */}
+            {isAdmin && (
+              <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
+                <button
+                  onClick={() => setViewMode("inventory")}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${isInventory ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                >
+                  Inventario
+                </button>
+                <button
+                  onClick={() => setViewMode("sales")}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${viewMode === "sales" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                >
+                  📋 Ventas
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Ventas ── */}
+          {viewMode === "sales" && (
+            <SalesRegister onRevert={handleRevertSale} />
+          )}
+
+          {/* ── Inventario ── */}
+          {isInventory && (
+            <>
+              {/* Sub-toggle cards/tabla + botón agregar */}
               {isAdmin && (
-                <div className="flex items-center gap-2">
-                  {/* Tarjetas / Tabla toggle */}
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
                     <button
-                      onClick={() => setViewMode("cards")}
-                      title="Vista tarjetas"
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${viewMode === "cards" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                      onClick={() => setInventoryView("cards")}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${inventoryView === "cards" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
                     >
                       ▦ Tarjetas
                     </button>
                     <button
-                      onClick={() => setViewMode("table")}
-                      title="Vista tabla"
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${viewMode === "table" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                      onClick={() => setInventoryView("table")}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${inventoryView === "table" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
                     >
                       ≡ Tabla
                     </button>
                   </div>
-                  {/* Ventas — botón separado */}
-                  <button
-                    onClick={() => setViewMode(viewMode === "sales" ? "cards" : "sales")}
-                    title="Registro de ventas"
-                    className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
-                      viewMode === "sales"
-                        ? "bg-gucha-dark border-gucha-subtle/40 text-white"
-                        : "border-gucha-border bg-[#0d0d0d] text-gucha-muted hover:text-white"
-                    }`}
-                  >
-                    📋 Ventas
-                  </button>
-                  {/* Marcas — botón separado */}
-                  <button
-                    onClick={() => setViewMode(viewMode === "brands" ? "cards" : "brands")}
-                    title="Gestionar marcas"
-                    className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
-                      viewMode === "brands"
-                        ? "bg-gucha-dark border-gucha-subtle/40 text-white"
-                        : "border-gucha-border bg-[#0d0d0d] text-gucha-muted hover:text-white"
-                    }`}
-                  >
-                    Marcas
+                  <button onClick={openAdd}
+                    className="flex items-center gap-2 bg-red-gradient text-white text-[12px] font-bold px-4 py-2 rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-red-glow">
+                    + Agregar producto
                   </button>
                 </div>
               )}
-            </div>
-          </div>
 
-          {isAdmin && viewMode !== "sales" && viewMode !== "brands" && (
-            <div className="flex justify-end mb-4">
-              <button onClick={openAdd}
-                className="flex items-center gap-2 bg-red-gradient text-white text-[12px] font-bold px-4 py-2 rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-red-glow">
-                + Agregar producto
-              </button>
-            </div>
+              {isAdmin && inventoryView === "table"
+                ? <StockTable
+                    products={filteredProducts}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                    onToggleHidden={handleToggleHidden}
+                    onToggleSizeHidden={handleToggleSizeHidden}
+                    onDeleteSize={handleDeleteSize}
+                    onEditSize={handleEditSize}
+                    onSell={handleSale}
+                    onRevertSale={handleRevertSale}
+                  />
+                : productGrid}
+            </>
           )}
-
-          {isAdmin && viewMode === "brands"
-            ? <BrandManager onBrandsChange={fetchBrands} />
-            : isAdmin && viewMode === "sales"
-            ? <SalesRegister onRevert={handleRevertSale} />
-            : isAdmin && viewMode === "table"
-            ? <StockTable
-                products={filteredProducts}
-                onEdit={openEdit}
-                onDelete={handleDelete}
-                onToggleHidden={handleToggleHidden}
-                onToggleSizeHidden={handleToggleSizeHidden}
-                onDeleteSize={handleDeleteSize}
-                onEditSize={handleEditSize}
-                onSell={handleSale}
-                onRevertSale={handleRevertSale}
-              />
-            : productGrid}
         </div>
       </div>
 
@@ -576,6 +574,7 @@ export default function HomePage() {
         <ProductModal
           product={editProduct}
           brands={brands}
+          onBrandCreated={handleBrandCreated}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
         />

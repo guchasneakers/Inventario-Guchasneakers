@@ -5,10 +5,11 @@ import type { BrandData, ProductData, ProductFormData } from "@/types";
 import ImageUpload from "./ImageUpload";
 
 interface Props {
-  product: ProductData | null;
-  brands:  BrandData[];
-  onClose: () => void;
-  onSave:  (data: ProductFormData, id?: number) => Promise<void>;
+  product:         ProductData | null;
+  brands:          BrandData[];
+  onBrandCreated:  (brand: BrandData) => void;
+  onClose:         () => void;
+  onSave:          (data: ProductFormData, id?: number) => Promise<void>;
 }
 
 const empty: ProductFormData = {
@@ -23,10 +24,14 @@ const US_SIZES = [
   "9","9.5","10","10.5","11","11.5","12","12.5","13","13.5","14","15","16",
 ];
 
-export default function ProductModal({ product, brands, onClose, onSave }: Props) {
-  const [form,    setForm]    = useState<ProductFormData>(empty);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState("");
+export default function ProductModal({ product, brands, onBrandCreated, onClose, onSave }: Props) {
+  const [form,          setForm]          = useState<ProductFormData>(empty);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState("");
+  const [addingBrand,   setAddingBrand]   = useState(false);
+  const [newBrandName,  setNewBrandName]  = useState("");
+  const [brandSaving,   setBrandSaving]   = useState(false);
+  const [brandError,    setBrandError]    = useState("");
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,6 +49,26 @@ export default function ProductModal({ product, brands, onClose, onSave }: Props
 
   function setField<K extends keyof ProductFormData>(k: K, v: ProductFormData[K]) {
     setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function handleCreateBrand() {
+    if (!newBrandName.trim() || brandSaving) return;
+    setBrandSaving(true); setBrandError("");
+    const res  = await fetch("/api/brands", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newBrandName.trim() }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      onBrandCreated(data);
+      setField("brandId", String(data.id));
+      setNewBrandName("");
+      setAddingBrand(false);
+    } else {
+      setBrandError(data.error ?? "Error al crear");
+    }
+    setBrandSaving(false);
   }
 
   function toggleSize(num: string) {
@@ -114,31 +139,54 @@ export default function ProductModal({ product, brands, onClose, onSave }: Props
           {/* brand */}
           <div>
             <label className={labelCls}>Marca</label>
-            {brands.length === 0 ? (
-              <p className="text-[11px] text-gucha-muted italic py-2">
-                No hay marcas configuradas — agrégalas en la vista <span className="font-bold text-white">🏷 Marcas</span>.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {brands.map((b) => {
-                  const selected = form.brandId === String(b.id);
-                  return (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => setField("brandId", selected ? "" : String(b.id))}
-                      className={`px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all border ${
-                        selected
-                          ? "bg-gucha-red-dark/60 border-gucha-red/50 text-gucha-red-light"
-                          : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50"
-                      }`}
-                    >
-                      {b.name}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-1.5">
+              {brands.map((b) => {
+                const selected = form.brandId === String(b.id);
+                return (
+                  <button key={b.id} type="button"
+                    onClick={() => setField("brandId", selected ? "" : String(b.id))}
+                    className={`px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all border ${
+                      selected
+                        ? "bg-gucha-red-dark/60 border-gucha-red/50 text-gucha-red-light"
+                        : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50"
+                    }`}>
+                    {b.name}
+                  </button>
+                );
+              })}
+
+              {/* Inline nueva marca */}
+              {addingBrand ? (
+                <div className="flex items-center gap-1.5 flex-1 min-w-[180px]">
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Nombre de la marca…"
+                    value={newBrandName}
+                    onChange={(e) => { setNewBrandName(e.target.value); setBrandError(""); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); handleCreateBrand(); }
+                      if (e.key === "Escape") { setAddingBrand(false); setNewBrandName(""); }
+                    }}
+                    className="flex-1 bg-[#0d0d0d] border border-gucha-subtle/40 rounded-xl px-3 py-1.5 text-[12px] text-white outline-none focus:border-gucha-subtle/60 transition-colors"
+                  />
+                  <button type="button" onClick={handleCreateBrand} disabled={!newBrandName.trim() || brandSaving}
+                    className="px-2.5 py-1.5 rounded-lg bg-gucha-green-dark/60 border border-gucha-green/30 text-gucha-green-light text-[11px] font-bold hover:bg-gucha-green/20 disabled:opacity-40 transition-colors whitespace-nowrap">
+                    {brandSaving ? "…" : "✓"}
+                  </button>
+                  <button type="button" onClick={() => { setAddingBrand(false); setNewBrandName(""); setBrandError(""); }}
+                    className="px-2 py-1.5 rounded-lg border border-gucha-border text-gucha-muted text-[11px] hover:text-white transition-colors">
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setAddingBrand(true)}
+                  className="px-3 py-1.5 rounded-xl text-[12px] font-bold border border-dashed border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50 transition-all">
+                  + Nueva
+                </button>
+              )}
+            </div>
+            {brandError && <p className="text-[11px] text-gucha-red-light mt-1.5">{brandError}</p>}
           </div>
 
           {/* name */}
