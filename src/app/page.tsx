@@ -236,9 +236,9 @@ export default function HomePage() {
     return [...set].sort((a, b) => parseFloat(a) - parseFloat(b));
   }, [products]);
 
-  // ── Productos filtrados ───────────────────────────────────────────────────
+  // ── Productos filtrados + ordenados ──────────────────────────────────────
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    let result = products.filter((p) => {
       // Marca
       if (filters.brandId !== null && p.brandId !== filters.brandId) return false;
 
@@ -248,6 +248,14 @@ export default function HomePage() {
           ? p.sizes.some((s) => s.number === filters.size)
           : p.sizes.some((s) => s.number === filters.size && !s.hidden && s.sold < s.quantity);
         if (!match) return false;
+      }
+
+      // Precio mín/máx
+      if (filters.priceMin !== "" && p.price !== null) {
+        if (p.price < parseFloat(filters.priceMin)) return false;
+      }
+      if (filters.priceMax !== "" && p.price !== null) {
+        if (p.price > parseFloat(filters.priceMax)) return false;
       }
 
       // Admin: Estado
@@ -269,6 +277,15 @@ export default function HomePage() {
 
       return true;
     });
+
+    // Ordenar
+    if (filters.sortBy === "price-asc") {
+      result = [...result].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    } else if (filters.sortBy === "price-desc") {
+      result = [...result].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    }
+
+    return result;
   }, [products, filters, isAdmin]);
 
   const stats = computeStats(products);
@@ -497,7 +514,7 @@ export default function HomePage() {
 
         {/* ── Admin nav (mobile) ── */}
         {isAdmin && (
-          <div className="flex items-center justify-between mb-3 mt-1">
+          <div className="flex items-center mb-3 mt-1">
             <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
               <button
                 onClick={() => setViewMode("inventory")}
@@ -512,12 +529,6 @@ export default function HomePage() {
                 📋 Ventas
               </button>
             </div>
-            {isInventory && (
-              <button onClick={openAdd}
-                className="flex items-center gap-1 text-[10px] font-bold text-gucha-green-light bg-gucha-green-dark/50 border border-gucha-green/20 rounded-lg px-3 py-1.5 hover:bg-gucha-green/20 transition-colors">
-                <span className="text-sm">+</span> Agregar
-              </button>
-            )}
           </div>
         )}
 

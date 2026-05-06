@@ -7,10 +7,14 @@ export interface Filters {
   size:          string;
   status:        "all" | "available" | "soldout" | "hidden";
   onlyAvailable: boolean;
+  priceMin:      string;
+  priceMax:      string;
+  sortBy:        "default" | "price-asc" | "price-desc";
 }
 
 export const defaultFilters: Filters = {
   brandId: null, size: "", status: "all", onlyAvailable: false,
+  priceMin: "", priceMax: "", sortBy: "default",
 };
 
 const STATUS_OPTIONS = [
@@ -18,6 +22,12 @@ const STATUS_OPTIONS = [
   { value: "available", label: "Disp."    },
   { value: "soldout",   label: "Agotados" },
   { value: "hidden",    label: "Ocultos"  },
+] as const;
+
+const SORT_OPTIONS = [
+  { value: "default",    label: "Defecto" },
+  { value: "price-asc",  label: "↑ Precio" },
+  { value: "price-desc", label: "↓ Precio" },
 ] as const;
 
 interface Props {
@@ -28,29 +38,60 @@ interface Props {
   isAdmin:  boolean;
 }
 
+const sectionLabel = "text-[9px] font-black text-gucha-muted tracking-[0.22em] uppercase";
+const segmented    = "flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5";
+const segBtn       = (active: boolean) =>
+  `flex-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all whitespace-nowrap ${
+    active ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"
+  }`;
+
 export default function FilterBar({ filters, onChange, brands, sizes, isAdmin }: Props) {
   function set(patch: Partial<Filters>) { onChange({ ...filters, ...patch }); }
 
   const hasActive =
-    filters.brandId !== null ||
-    filters.size    !== ""   ||
-    filters.status  !== "all" ||
-    filters.onlyAvailable;
+    filters.brandId       !== null  ||
+    filters.size          !== ""    ||
+    filters.status        !== "all" ||
+    filters.onlyAvailable           ||
+    filters.priceMin      !== ""    ||
+    filters.priceMax      !== ""    ||
+    filters.sortBy        !== "default";
 
   return (
-    <div className="space-y-3 mt-3">
+    <div className="mt-4 space-y-1">
+
+      {/* ── Divider ── */}
+      <div className="flex items-center gap-2 pb-1">
+        <div className="flex-1 h-px bg-gucha-border/50" />
+        <span className="text-[8px] font-black text-gucha-muted/50 tracking-[0.25em] uppercase">Filtros</span>
+        <div className="flex-1 h-px bg-gucha-border/50" />
+      </div>
+
+      {/* ── Ordenar ── */}
+      <div className="py-2">
+        <p className={`${sectionLabel} mb-2`}>Ordenar</p>
+        <div className={segmented}>
+          {SORT_OPTIONS.map(({ value, label }) => (
+            <button key={value} type="button"
+              onClick={() => set({ sortBy: value as Filters["sortBy"] })}
+              className={segBtn(filters.sortBy === value)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* ── Marca ── */}
       {brands.length > 0 && (
-        <div>
-          <p className="text-[9px] font-bold text-gucha-muted tracking-widest uppercase mb-1.5">Marca</p>
-          <div className="flex flex-wrap gap-1">
+        <div className="py-2">
+          <p className={`${sectionLabel} mb-2`}>Marca</p>
+          <div className="flex flex-wrap gap-1.5">
             {brands.map((b) => {
               const active = filters.brandId === b.id;
               return (
                 <button key={b.id} type="button"
                   onClick={() => set({ brandId: active ? null : b.id })}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-all ${
                     active
                       ? "bg-gucha-red-dark/60 border-gucha-red/50 text-gucha-red-light"
                       : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50"
@@ -63,19 +104,52 @@ export default function FilterBar({ filters, onChange, brands, sizes, isAdmin }:
         </div>
       )}
 
+      {/* ── Precio ── */}
+      <div className="py-2">
+        <p className={`${sectionLabel} mb-2`}>Rango de precio</p>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gucha-muted text-[11px] font-bold pointer-events-none">$</span>
+            <input
+              type="number" min={0} placeholder="Mín"
+              value={filters.priceMin}
+              onChange={(e) => set({ priceMin: e.target.value })}
+              className="w-full pl-6 pr-2 py-2 bg-[#0d0d0d] border border-gucha-border rounded-xl text-[12px] text-white placeholder-gucha-muted/40 outline-none focus:border-gucha-subtle/60 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          <span className="text-gucha-muted/50 text-[11px] flex-shrink-0">—</span>
+          <div className="relative flex-1">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gucha-muted text-[11px] font-bold pointer-events-none">$</span>
+            <input
+              type="number" min={0} placeholder="Máx"
+              value={filters.priceMax}
+              onChange={(e) => set({ priceMax: e.target.value })}
+              className="w-full pl-6 pr-2 py-2 bg-[#0d0d0d] border border-gucha-border rounded-xl text-[12px] text-white placeholder-gucha-muted/40 outline-none focus:border-gucha-subtle/60 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          {(filters.priceMin !== "" || filters.priceMax !== "") && (
+            <button type="button"
+              onClick={() => set({ priceMin: "", priceMax: "" })}
+              className="text-gucha-muted/50 hover:text-white transition-colors text-[12px] flex-shrink-0">
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* ── Talla ── */}
       {sizes.length > 0 && (
-        <div>
-          <p className="text-[9px] font-bold text-gucha-muted tracking-widest uppercase mb-1.5">Talla</p>
-          <div className="flex flex-wrap gap-1">
+        <div className="py-2">
+          <p className={`${sectionLabel} mb-2`}>Talla</p>
+          <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
             {sizes.map((s) => {
               const active = filters.size === s;
               return (
                 <button key={s} type="button"
                   onClick={() => set({ size: active ? "" : s })}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
+                  className={`flex-shrink-0 w-9 h-8 rounded-lg text-[11px] font-bold border transition-all ${
                     active
-                      ? "bg-gucha-dark border-gucha-subtle/60 text-white"
+                      ? "bg-gucha-dark border-gucha-subtle/70 text-white shadow-[0_0_8px_rgba(255,255,255,0.08)]"
                       : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50"
                   }`}>
                   {s}
@@ -88,17 +162,13 @@ export default function FilterBar({ filters, onChange, brands, sizes, isAdmin }:
 
       {/* ── Admin: Estado ── */}
       {isAdmin && (
-        <div>
-          <p className="text-[9px] font-bold text-gucha-muted tracking-widest uppercase mb-1.5">Estado</p>
-          <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
+        <div className="py-2">
+          <p className={`${sectionLabel} mb-2`}>Estado</p>
+          <div className={segmented}>
             {STATUS_OPTIONS.map(({ value, label }) => (
               <button key={value} type="button"
                 onClick={() => set({ status: value })}
-                className={`flex-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
-                  filters.status === value
-                    ? "bg-gucha-dark text-white"
-                    : "text-gucha-muted hover:text-white"
-                }`}>
+                className={segBtn(filters.status === value)}>
                 {label}
               </button>
             ))}
@@ -108,35 +178,36 @@ export default function FilterBar({ filters, onChange, brands, sizes, isAdmin }:
 
       {/* ── Cliente: Solo disponibles ── */}
       {!isAdmin && (
-        <button type="button"
-          onClick={() => set({ onlyAvailable: !filters.onlyAvailable })}
-          className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-xl border text-[11px] font-semibold transition-all ${
-            filters.onlyAvailable
-              ? "bg-gucha-green-dark/40 border-gucha-green/40 text-gucha-green-light"
-              : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white"
-          }`}>
-          <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-            filters.onlyAvailable
-              ? "bg-gucha-green-light border-gucha-green-light"
-              : "border-gucha-muted/60"
-          }`}>
-            {filters.onlyAvailable && (
-              <svg viewBox="0 0 10 8" className="w-2 h-2 fill-black">
-                <path d="M1 4l3 3 5-6" stroke="black" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
-          </span>
-          Solo disponibles
-        </button>
+        <div className="py-2">
+          <button type="button"
+            onClick={() => set({ onlyAvailable: !filters.onlyAvailable })}
+            className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl border text-[11px] font-semibold transition-all ${
+              filters.onlyAvailable
+                ? "bg-gucha-green-dark/40 border-gucha-green/40 text-gucha-green-light"
+                : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/40"
+            }`}>
+            {/* Toggle pill */}
+            <div className={`relative w-8 h-4 rounded-full transition-colors flex-shrink-0 ${
+              filters.onlyAvailable ? "bg-gucha-green-light" : "bg-gucha-border"
+            }`}>
+              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-200 ${
+                filters.onlyAvailable ? "left-4" : "left-0.5"
+              }`} />
+            </div>
+            Solo disponibles
+          </button>
+        </div>
       )}
 
       {/* ── Limpiar ── */}
       {hasActive && (
-        <button type="button"
-          onClick={() => onChange(defaultFilters)}
-          className="w-full text-center text-[10px] text-gucha-muted hover:text-white transition-colors underline underline-offset-2">
-          Limpiar filtros
-        </button>
+        <div className="pt-1">
+          <button type="button"
+            onClick={() => onChange(defaultFilters)}
+            className="w-full text-center text-[10px] text-gucha-muted hover:text-white transition-colors py-1.5 rounded-xl border border-gucha-border/50 hover:border-gucha-subtle/40 bg-[#0d0d0d]">
+            ✕ Limpiar filtros
+          </button>
+        </div>
       )}
     </div>
   );
