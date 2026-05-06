@@ -30,7 +30,7 @@ function MonthTag() {
   const display = month.charAt(0).toUpperCase() + month.slice(1);
 
   return (
-    <span className="text-[9px] font-bold tracking-[0.3em] text-gucha-muted uppercase">
+    <span className="text-[11px] font-bold tracking-[0.25em] text-gucha-muted uppercase">
       Inventario · {display}
     </span>
   );
@@ -322,7 +322,7 @@ export default function HomePage() {
 
       {/* Mobile: header compacto en una sola fila */}
       <div className="flex md:hidden items-center gap-3 mt-3 mb-4">
-        <img src="/logo.png" alt="Gucha Sneakers" className="w-10 h-auto drop-shadow-[0_0_8px_rgba(204,34,34,0.5)]" />
+        <img src="/logo.png" alt="Gucha Sneakers" className="w-20 h-auto drop-shadow-[0_0_8px_rgba(204,34,34,0.5)]" />
         <div className="flex-1 min-w-0">
           <MonthTag />
         </div>
