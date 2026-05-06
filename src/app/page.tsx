@@ -25,14 +25,14 @@ function computeStats(products: ProductData[], brands: BrandData[]): StatsType {
 }
 
 // ── Dynamic month ─────────────────────────────────────────────────────────────
-function MonthTag() {
+function MonthTag({ compact = false }: { compact?: boolean }) {
   const month = new Intl.DateTimeFormat("es", { month: "long", year: "numeric" })
     .format(new Date());
   const display = month.charAt(0).toUpperCase() + month.slice(1);
 
   return (
-    <span className="text-[11px] font-bold tracking-[0.25em] text-gucha-muted uppercase">
-      Inventario · {display}
+    <span className="text-[11px] font-bold tracking-[0.2em] text-gucha-muted uppercase whitespace-nowrap">
+      {compact ? display : `Inventario · ${display}`}
     </span>
   );
 }
@@ -376,7 +376,7 @@ export default function HomePage() {
       <div className="flex md:hidden items-center gap-3 mt-3 mb-4">
         <img src="/logo.png" alt="Gucha Sneakers" className="w-20 h-auto drop-shadow-[0_0_8px_rgba(204,34,34,0.5)]" />
         <div className="flex-1 min-w-0">
-          <MonthTag />
+          <MonthTag compact />
         </div>
         {adminButton}
       </div>
