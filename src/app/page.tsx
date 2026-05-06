@@ -45,6 +45,7 @@ export default function HomePage() {
   const [search,      setSearch]      = useState("");
   const [loading,     setLoading]     = useState(true);
   const [isAdmin,     setIsAdmin]     = useState(false);
+  const [editMode,    setEditMode]    = useState(false);
   const [showLogin,   setShowLogin]   = useState(false);
   const [modalOpen,   setModalOpen]   = useState(false);
   const [editProduct, setEditProduct] = useState<ProductData | null>(null);
@@ -325,8 +326,8 @@ export default function HomePage() {
         sizes={uniqueSizes}
         isAdmin={isAdmin}
       />
-      {/* WhatsApp — solo desktop sidebar */}
-      {hasSelection ? (
+      {/* WhatsApp — solo desktop sidebar, solo cliente */}
+      {!isAdmin && (hasSelection ? (
         <a
           href={buildWaUrl()}
           target="_blank"
@@ -344,7 +345,7 @@ export default function HomePage() {
           {waSvg}
           Selecciona tallas
         </div>
-      )}
+      ))}
     </>
   );
 
@@ -391,6 +392,7 @@ export default function HomePage() {
           product={product}
           index={i}
           isAdmin={isAdmin}
+          editMode={editMode}
           onSell={handleSale}
           onEdit={openEdit}
           onDelete={handleDelete}
@@ -440,19 +442,38 @@ export default function HomePage() {
 
             {/* Navegación principal admin */}
             {isAdmin && (
-              <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
-                <button
-                  onClick={() => setViewMode("inventory")}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${isInventory ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
-                >
-                  Inventario
-                </button>
-                <button
-                  onClick={() => setViewMode("sales")}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${viewMode === "sales" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
-                >
-                  📋 Ventas
-                </button>
+              <div className="flex items-center gap-2">
+                {/* Edit mode toggle — solo en inventario */}
+                {isInventory && (
+                  <button
+                    onClick={() => setEditMode((v) => !v)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                      editMode
+                        ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-300"
+                        : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white"
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    {editMode ? "Editando" : "Editar"}
+                  </button>
+                )}
+                <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
+                  <button
+                    onClick={() => setViewMode("inventory")}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${isInventory ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                  >
+                    Inventario
+                  </button>
+                  <button
+                    onClick={() => setViewMode("sales")}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 ${viewMode === "sales" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                  >
+                    📋 Ventas
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -482,16 +503,19 @@ export default function HomePage() {
                       ≡ Tabla
                     </button>
                   </div>
-                  <button onClick={openAdd}
-                    className="flex items-center gap-2 bg-red-gradient text-white text-[12px] font-bold px-4 py-2 rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-red-glow">
-                    + Agregar producto
-                  </button>
+                  {editMode && (
+                    <button onClick={openAdd}
+                      className="flex items-center gap-2 bg-red-gradient text-white text-[12px] font-bold px-4 py-2 rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-red-glow">
+                      + Agregar producto
+                    </button>
+                  )}
                 </div>
               )}
 
               {isAdmin && inventoryView === "table"
                 ? <StockTable
                     products={filteredProducts}
+                    editMode={editMode}
                     onEdit={openEdit}
                     onDelete={handleDelete}
                     onToggleHidden={handleToggleHidden}
@@ -544,9 +568,9 @@ export default function HomePage() {
         {/* ── Inventario (mobile) ── */}
         {isInventory && (
           <>
-            {/* Cards / Tabla toggle (admin only) */}
+            {/* Cards / Tabla toggle + Editar (admin only) */}
             {isAdmin && (
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
                   <button
                     onClick={() => setInventoryView("cards")}
@@ -561,9 +585,23 @@ export default function HomePage() {
                     ≡ Tabla
                   </button>
                 </div>
-                {/* count */}
+                {/* Edit mode toggle */}
+                <button
+                  onClick={() => setEditMode((v) => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                    editMode
+                      ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-300"
+                      : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white"
+                  }`}
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  {editMode ? "Editando" : "Editar"}
+                </button>
                 {!loading && (
-                  <span className="text-[11px] text-gucha-muted">
+                  <span className="text-[11px] text-gucha-muted ml-auto">
                     {filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""} modelos
                   </span>
                 )}
@@ -589,6 +627,7 @@ export default function HomePage() {
             {isAdmin && inventoryView === "table" ? (
               <MobileStockList
                 products={filteredProducts}
+                editMode={editMode}
                 onEdit={openEdit}
                 onDelete={handleDelete}
                 onToggleHidden={handleToggleHidden}
@@ -611,8 +650,8 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* ── FAB WhatsApp — solo mobile ─── */}
-      {hasSelection ? (
+      {/* ── FAB WhatsApp — solo mobile, solo cliente ─── */}
+      {!isAdmin && (hasSelection ? (
         <a
           href={buildWaUrl()}
           target="_blank"
@@ -630,10 +669,10 @@ export default function HomePage() {
           {waSvg}
           Ordena ahora
         </div>
-      )}
+      ))}
 
-      {/* ── FAB mobile — solo admin ─── */}
-      {isAdmin && (
+      {/* ── FAB mobile — solo admin en modo edición ─── */}
+      {isAdmin && editMode && isInventory && (
         <button onClick={openAdd}
           className="md:hidden fixed bottom-24 right-5 w-14 h-14 bg-red-gradient rounded-2xl shadow-red-glow flex items-center justify-center text-white text-2xl hover:opacity-90 active:scale-95 transition-all z-40">
           +

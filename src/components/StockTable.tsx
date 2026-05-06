@@ -13,6 +13,7 @@ type StatusFilter = "all" | "available" | "soldout" | "hidden";
 
 interface Props {
   products:           ProductData[];
+  editMode?:          boolean;
   onEdit:             (product: ProductData) => void;
   onDelete:           (productId: number) => void;
   onToggleHidden:     (productId: number, hidden: boolean) => void;
@@ -85,7 +86,7 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
 ];
 
 export default function StockTable({
-  products, onEdit, onDelete, onToggleHidden,
+  products, editMode = false, onEdit, onDelete, onToggleHidden,
   onToggleSizeHidden, onDeleteSize, onEditSize, onSell, onRevertSale,
 }: Props) {
   const [selectedSizes, setSelectedSizes] = useState<Record<number, number>>({});
@@ -334,16 +335,18 @@ export default function StockTable({
                                 <span className={`text-[12px] font-semibold leading-snug flex-1 ${p.hidden ? "line-through text-gucha-muted" : "text-white"}`}>
                                   {p.name}
                                 </span>
-                                <div className="flex gap-0.5 flex-shrink-0 mt-0.5">
-                                  <button onClick={() => onEdit(p)} title="Editar modelo"
-                                    className="w-5 h-5 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60 transition-colors text-[10px]">✎</button>
-                                  <button onClick={() => onToggleHidden(p.id, !p.hidden)} title={p.hidden ? "Mostrar" : "Ocultar"}
-                                    className={`w-5 h-5 flex items-center justify-center rounded-md border transition-colors ${p.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
-                                    <EyeIcon open={!p.hidden} />
-                                  </button>
-                                  <button onClick={() => onDelete(p.id)} title="Eliminar modelo"
-                                    className="w-5 h-5 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
-                                </div>
+                                {editMode && (
+                                  <div className="flex gap-0.5 flex-shrink-0 mt-0.5">
+                                    <button onClick={() => onEdit(p)} title="Editar modelo"
+                                      className="w-5 h-5 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60 transition-colors text-[10px]">✎</button>
+                                    <button onClick={() => onToggleHidden(p.id, !p.hidden)} title={p.hidden ? "Mostrar" : "Ocultar"}
+                                      className={`w-5 h-5 flex items-center justify-center rounded-md border transition-colors ${p.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
+                                      <EyeIcon open={!p.hidden} />
+                                    </button>
+                                    <button onClick={() => onDelete(p.id)} title="Eliminar modelo"
+                                      className="w-5 h-5 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                                  </div>
+                                )}
                               </div>
                             </td>
 
@@ -419,14 +422,18 @@ export default function StockTable({
                                 <div className="flex items-center justify-center gap-1">
                                   <button onClick={() => setSaleTarget({ size: selSize, product: p })} title="Registrar venta"
                                     className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors text-[10px]">$</button>
-                                  <button onClick={() => setEditTarget({ size: selSize, productId: p.id })} title="Editar talla"
-                                    className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60 transition-colors text-[11px]">✎</button>
-                                  <button onClick={() => onToggleSizeHidden(p.id, selSize.id, !selSize.hidden)} title={selSize.hidden ? "Mostrar talla" : "Ocultar talla"}
-                                    className={`w-6 h-6 flex items-center justify-center rounded-md border transition-colors ${selSize.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
-                                    <EyeIcon open={!selSize.hidden} />
-                                  </button>
-                                  <button onClick={() => onDeleteSize(p.id, selSize.id)} title="Eliminar talla"
-                                    className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                                  {editMode && (
+                                    <>
+                                      <button onClick={() => setEditTarget({ size: selSize, productId: p.id })} title="Editar talla"
+                                        className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/60 transition-colors text-[11px]">✎</button>
+                                      <button onClick={() => onToggleSizeHidden(p.id, selSize.id, !selSize.hidden)} title={selSize.hidden ? "Mostrar talla" : "Ocultar talla"}
+                                        className={`w-6 h-6 flex items-center justify-center rounded-md border transition-colors ${selSize.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
+                                        <EyeIcon open={!selSize.hidden} />
+                                      </button>
+                                      <button onClick={() => onDeleteSize(p.id, selSize.id)} title="Eliminar talla"
+                                        className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                                    </>
+                                  )}
                                 </div>
                               ) : (
                                 <p className="text-[9px] text-gucha-muted/40 text-center">← selecciona</p>

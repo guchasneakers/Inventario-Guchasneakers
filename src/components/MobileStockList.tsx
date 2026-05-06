@@ -11,6 +11,7 @@ const US_SIZES = [
 
 interface Props {
   products:           ProductData[];
+  editMode?:          boolean;
   onEdit:             (product: ProductData) => void;
   onDelete:           (productId: number) => void;
   onToggleHidden:     (productId: number, hidden: boolean) => void;
@@ -76,7 +77,7 @@ function SizeEditModal({ size, onConfirm, onClose }: {
 }
 
 export default function MobileStockList({
-  products, onEdit, onDelete, onToggleHidden,
+  products, editMode = false, onEdit, onDelete, onToggleHidden,
   onToggleSizeHidden, onDeleteSize, onEditSize, onSell, onRevertSale,
 }: Props) {
   const [selectedSizes, setSelectedSizes] = useState<Record<number, number>>({});
@@ -154,16 +155,18 @@ export default function MobileStockList({
                       <p className={`text-[12px] font-semibold leading-snug flex-1 ${p.hidden ? "line-through text-gucha-muted" : "text-white"}`}>
                         {p.name}
                       </p>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => onEdit(p)} title="Editar"
-                          className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white transition-colors text-[10px]">✎</button>
-                        <button onClick={() => onToggleHidden(p.id, !p.hidden)} title={p.hidden ? "Mostrar" : "Ocultar"}
-                          className={`w-6 h-6 flex items-center justify-center rounded-md border transition-colors ${p.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
-                          <EyeIcon open={!p.hidden} />
-                        </button>
-                        <button onClick={() => onDelete(p.id)} title="Eliminar"
-                          className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
-                      </div>
+                      {editMode && (
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button onClick={() => onEdit(p)} title="Editar"
+                            className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white transition-colors text-[10px]">✎</button>
+                          <button onClick={() => onToggleHidden(p.id, !p.hidden)} title={p.hidden ? "Mostrar" : "Ocultar"}
+                            className={`w-6 h-6 flex items-center justify-center rounded-md border transition-colors ${p.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
+                            <EyeIcon open={!p.hidden} />
+                          </button>
+                          <button onClick={() => onDelete(p.id)} title="Eliminar"
+                            className="w-6 h-6 flex items-center justify-center rounded-md bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Row 2: Size chips */}
@@ -241,14 +244,18 @@ export default function MobileStockList({
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[10px] font-bold active:scale-95 transition-all">
                             $ Vender
                           </button>
-                          <button onClick={() => setEditTarget({ size: selSize, productId: p.id })}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white transition-colors text-[11px]">✎</button>
-                          <button onClick={() => onToggleSizeHidden(p.id, selSize.id, !selSize.hidden)}
-                            className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-colors ${selSize.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
-                            <EyeIcon open={!selSize.hidden} />
-                          </button>
-                          <button onClick={() => onDeleteSize(p.id, selSize.id)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                          {editMode && (
+                            <>
+                              <button onClick={() => setEditTarget({ size: selSize, productId: p.id })}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white transition-colors text-[11px]">✎</button>
+                              <button onClick={() => onToggleSizeHidden(p.id, selSize.id, !selSize.hidden)}
+                                className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-colors ${selSize.hidden ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light" : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"}`}>
+                                <EyeIcon open={!selSize.hidden} />
+                              </button>
+                              <button onClick={() => onDeleteSize(p.id, selSize.id)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[9px]">✕</button>
+                            </>
+                          )}
                         </div>
                         <button onClick={() => toggleSize(p.id, selId)}
                           className="ml-auto text-[9px] text-gucha-muted/50 hover:text-gucha-muted transition-colors">
