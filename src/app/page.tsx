@@ -513,9 +513,12 @@ export default function HomePage() {
       <div className="md:hidden max-w-md mx-auto px-5 py-4 pb-28">
         {sidebarContent}
 
+        {/* ── Separador ── */}
+        <div className="mt-5 mb-4 border-t border-gucha-border-2" />
+
         {/* ── Admin nav (mobile) ── */}
         {isAdmin && (
-          <div className="flex items-center mb-3 mt-1">
+          <div className="flex items-center mb-3">
             <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
               <button
                 onClick={() => setViewMode("inventory")}
