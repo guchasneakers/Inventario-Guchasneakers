@@ -213,18 +213,58 @@ async function generateSaleInvoice(sale: SaleRecord) {
   </tr>`;
 
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Factura #${sale.id} · Gucha Sneakers</title>
-  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#fff;color:#111;padding:40px;max-width:720px;margin:0 auto}header{text-align:center;padding-bottom:24px;border-bottom:3px solid #cc2222;margin-bottom:28px}header img{width:110px;height:auto;margin-bottom:10px}header h1{font-size:22px;font-weight:900;color:#cc2222;letter-spacing:.12em}header p{font-size:11px;color:#888;margin-top:3px}.meta{display:flex;justify-content:space-between;margin-bottom:24px;gap:20px}.meta-block{font-size:13px}.meta-label{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.15em;margin-bottom:4px;font-weight:bold}table{width:100%;border-collapse:collapse;margin-bottom:24px}thead tr{border-bottom:2px solid #cc2222;background:#fafafa}th{padding:10px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#888}td{padding:12px;font-size:13px;border-bottom:1px solid #eee;vertical-align:top}.brand{font-size:9px;color:#cc2222;font-weight:900;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px}.center{text-align:center}.right{text-align:right}.total-row td{border-top:2px solid #cc2222;border-bottom:none;background:#fff9f9;padding:14px 12px}.total-label{font-size:12px;color:#555;text-align:right;font-weight:bold}.total-value{font-size:22px;font-weight:900;color:#cc2222;text-align:right}footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #eee}.share-bar{text-align:center;margin-top:24px;padding-bottom:10px}.share-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#25D366;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;text-decoration:none}@media print{body{padding:20px}.share-bar{display:none}}</style>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,sans-serif;background:#f5f5f5;color:#111;min-height:100vh}
+    .toolbar{position:sticky;top:0;z-index:10;background:#111;padding:12px 24px;display:flex;align-items:center;justify-content:center;gap:12px}
+    .toolbar-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;text-decoration:none;border:none;transition:opacity .15s}
+    .btn-wa{background:#25D366;color:#fff}.btn-wa:hover{opacity:.88}
+    .btn-dl{background:#fff;color:#111}.btn-dl:hover{opacity:.88}
+    .invoice{background:#fff;max-width:720px;margin:32px auto;padding:48px;border-radius:12px;box-shadow:0 4px 32px rgba(0,0,0,.10)}
+    header{text-align:center;padding-bottom:24px;border-bottom:3px solid #cc2222;margin-bottom:28px}
+    header img{width:110px;height:auto;margin-bottom:10px}
+    header h1{font-size:22px;font-weight:900;color:#cc2222;letter-spacing:.12em}
+    header p{font-size:11px;color:#888;margin-top:3px}
+    .meta{display:flex;justify-content:space-between;margin-bottom:24px;gap:20px}
+    .meta-block{font-size:13px}.meta-label{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.15em;margin-bottom:4px;font-weight:bold}
+    table{width:100%;border-collapse:collapse;margin-bottom:24px}
+    thead tr{border-bottom:2px solid #cc2222;background:#fafafa}
+    th{padding:10px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#888}
+    td{padding:12px;font-size:13px;border-bottom:1px solid #eee;vertical-align:top}
+    .brand{font-size:9px;color:#cc2222;font-weight:900;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px}
+    .center{text-align:center}.right{text-align:right}
+    .total-row td{border-top:2px solid #cc2222;border-bottom:none;background:#fff9f9;padding:14px 12px}
+    .total-label{font-size:12px;color:#555;text-align:right;font-weight:bold}
+    .total-value{font-size:22px;font-weight:900;color:#cc2222;text-align:right}
+    footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #eee}
+    @media print{
+      body{background:#fff}
+      .toolbar{display:none}
+      .invoice{margin:0;padding:32px;box-shadow:none;border-radius:0}
+    }
+  </style>
   </head><body>
-  <header><img src="${logoSrc}" alt="Gucha Sneakers"/><h1>GUCHA SNEAKERS</h1><p>FREE SHIPPING ACROSS THE USA</p></header>
-  <div class="meta">
-    <div class="meta-block"><div class="meta-label">Comprador</div><div><strong>${sale.buyerName || "—"}</strong></div>${sale.note ? `<div style="font-size:12px;color:#777;margin-top:4px">${sale.note}</div>` : ""}</div>
-    <div class="meta-block" style="text-align:right"><div class="meta-label">Venta #${sale.id} · Fecha</div><div>${dateStr}</div></div>
+  <div class="toolbar">
+    <a href="${waUrl}" class="toolbar-btn btn-wa" target="_blank" rel="noopener noreferrer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Compartir por WhatsApp
+    </a>
+    <button class="toolbar-btn btn-dl" onclick="window.print()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Descargar PDF
+    </button>
   </div>
-  <table><thead><tr><th>Modelo</th><th class="center">Size</th><th class="center">Cant.</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead>
-  <tbody>${row}<tr class="total-row"><td colspan="4" class="total-label">Total</td><td class="total-value">$${total.toFixed(2)}</td></tr></tbody></table>
-  <footer><p style="font-size:13px;font-weight:bold;color:#333">¡Gracias por tu compra!</p><p style="font-size:11px;color:#aaa;margin-top:4px">Gucha Sneakers · Envío gratis a todo USA</p></footer>
-  <div class="share-bar"><a href="${waUrl}" class="share-btn" target="_blank" rel="noopener noreferrer">📲 Compartir por WhatsApp</a></div>
-  <script>window.onload=()=>{window.print();}<\/script></body></html>`;
+  <div class="invoice">
+    <header><img src="${logoSrc}" alt="Gucha Sneakers"/><h1>GUCHA SNEAKERS</h1><p>FREE SHIPPING ACROSS THE USA</p></header>
+    <div class="meta">
+      <div class="meta-block"><div class="meta-label">Comprador</div><div><strong>${sale.buyerName || "—"}</strong></div>${sale.note ? `<div style="font-size:12px;color:#777;margin-top:4px">${sale.note}</div>` : ""}</div>
+      <div class="meta-block" style="text-align:right"><div class="meta-label">Venta #${sale.id} · Fecha</div><div>${dateStr}</div></div>
+    </div>
+    <table><thead><tr><th>Modelo</th><th class="center">Size</th><th class="center">Cant.</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead>
+    <tbody>${row}<tr class="total-row"><td colspan="4" class="total-label">Total</td><td class="total-value">$${total.toFixed(2)}</td></tr></tbody></table>
+    <footer><p style="font-size:13px;font-weight:bold;color:#333">¡Gracias por tu compra!</p><p style="font-size:11px;color:#aaa;margin-top:4px">Gucha Sneakers · Envío gratis a todo USA</p></footer>
+  </div>
+  </body></html>`;
 
   const win = window.open("", "_blank");
   if (win) { win.document.write(html); win.document.close(); }
@@ -729,23 +769,6 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
                             className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors whitespace-nowrap"
                           >
                             📄
-                          </button>
-                          {/* Share PDF via WhatsApp */}
-                          <button
-                            onClick={async () => {
-                              setSharingId(sale.id);
-                              try { await shareInvoicePdf(sale); } catch { /* cancelled */ }
-                              setSharingId(null);
-                            }}
-                            disabled={sharingId === sale.id}
-                            title="Compartir factura PDF por WhatsApp"
-                            className="px-2.5 py-1 rounded-lg border border-[#25D366]/40 text-[#25D366] text-[9px] font-semibold hover:bg-[#25D366]/10 disabled:opacity-40 transition-colors whitespace-nowrap"
-                          >
-                            {sharingId === sale.id ? "…" : (
-                              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current inline-block">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                              </svg>
-                            )}
                           </button>
                           {/* Edit */}
                           <button
