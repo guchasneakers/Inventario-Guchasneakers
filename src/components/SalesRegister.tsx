@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import * as XLSX from "xlsx";
 import type { SaleRecord } from "@/types";
 
 interface Props {
@@ -110,66 +111,114 @@ export default function SalesRegister({ onRevert }: Props) {
   const totalPairs   = filtered.reduce((a, s) => a + s.quantity, 0);
   const avgTicket    = filtered.length > 0 ? totalRevenue / filtered.length : 0;
 
-  // ── CSV export ───────────────────────────────────────────────────────────
-  function downloadCSV() {
-    const label = periodLabel();
+  // ── Excel export ─────────────────────────────────────────────────────────
+  function downloadExcel() {
+    const label   = periodLabel();
+    const today   = new Intl.DateTimeFormat("es", { dateStyle: "full" }).format(new Date());
+    const wb      = XLSX.utils.book_new();
 
-    // Top models ranking
-    const modelMap = new Map<string, { name: string; brand: string; pairs: number; revenue: number }>();
+    // ── Sheet 1: Resumen ─────────────────────────────────────────────────
+    const resumenData: (string | number)[][] = [
+      ["GUCHA SNEAKERS — REPORTE DE VENTAS"],
+      [`Período: ${label}`],
+      [`Generado: ${today}`],
+      [],
+      ["RESUMEN", ""],
+      ["Total de ventas",  filtered.length],
+      ["Total de pares",   totalPairs],
+      ["Total cobrado",    totalRevenue],
+      ["Ticket promedio",  avgTicket],
+    ];
+    const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+    wsResumen["!cols"] = [{ wch: 22 }, { wch: 18 }];
+    // Format currency cells
+    ["B8", "B9"].forEach((cell) => {
+      if (wsResumen[cell]) wsResumen[cell].z = '"$"#,##0.00';
+    });
+    XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+
+    // ── Sheet 2: Detalle de ventas ───────────────────────────────────────
+    const headers = ["#", "Fecha", "Marca", "Modelo", "Talla", "Cliente", "Pares", "$/par", "Total", "Nota"];
+    const rows = filtered.map((s) => [
+      s.id,
+      fmt(s.createdAt),
+      s.size?.product?.brand?.name ?? "",
+      s.size?.product?.name        ?? "",
+      s.size?.number               ?? "",
+      s.buyerName                  ?? "",
+      s.quantity,
+      s.pricePerPair,
+      s.quantity * s.pricePerPair,
+      s.note                       ?? "",
+    ]);
+
+    // Totals row
+    const totalsRow: (string | number)[] = [
+      "", "TOTAL", "", "", "", "",
+      totalPairs, "", totalRevenue, "",
+    ];
+
+    const wsDetalle = XLSX.utils.aoa_to_sheet([headers, ...rows, [], totalsRow]);
+    wsDetalle["!cols"] = [
+      { wch: 6  }, // #
+      { wch: 20 }, // Fecha
+      { wch: 14 }, // Marca
+      { wch: 30 }, // Modelo
+      { wch: 7  }, // Talla
+      { wch: 18 }, // Cliente
+      { wch: 7  }, // Pares
+      { wch: 10 }, // $/par
+      { wch: 12 }, // Total
+      { wch: 20 }, // Nota
+    ];
+    // Format $/par and Total columns as currency
+    const range = XLSX.utils.decode_range(wsDetalle["!ref"] ?? "A1");
+    for (let r = 1; r <= range.e.r; r++) {
+      ["H", "I"].forEach((col) => {
+        const cellRef = `${col}${r + 1}`;
+        if (wsDetalle[cellRef] && typeof wsDetalle[cellRef].v === "number") {
+          wsDetalle[cellRef].z = '"$"#,##0.00';
+        }
+      });
+    }
+    XLSX.utils.book_append_sheet(wb, wsDetalle, "Ventas");
+
+    // ── Sheet 3: Top modelos ─────────────────────────────────────────────
+    const modelMap = new Map<string, { name: string; brand: string; pairs: number; revenue: number; sales: number }>();
     filtered.forEach((s) => {
-      const name  = s.size?.product?.name ?? "Desconocido";
+      const key   = s.size?.product?.name ?? "Desconocido";
       const brand = s.size?.product?.brand?.name ?? "";
-      if (!modelMap.has(name)) modelMap.set(name, { name, brand, pairs: 0, revenue: 0 });
-      const m = modelMap.get(name)!;
+      if (!modelMap.has(key)) modelMap.set(key, { name: key, brand, pairs: 0, revenue: 0, sales: 0 });
+      const m = modelMap.get(key)!;
       m.pairs   += s.quantity;
       m.revenue += s.quantity * s.pricePerPair;
+      m.sales   += 1;
     });
     const topModels = [...modelMap.values()].sort((a, b) => b.revenue - a.revenue);
 
-    const rows: (string | number)[][] = [
-      ["GUCHA SNEAKERS · REPORTE DE VENTAS"],
-      [`Período: ${label}`],
-      [`Generado: ${new Intl.DateTimeFormat("es", { dateStyle: "full" }).format(new Date())}`],
-      [],
-      ["── RESUMEN ──"],
-      ["Total de ventas",  filtered.length],
-      ["Total de pares",   totalPairs],
-      ["Total cobrado",    `$${totalRevenue.toFixed(2)}`],
-      ["Ticket promedio",  `$${avgTicket.toFixed(2)}`],
-      [],
-      ["── DETALLE DE VENTAS ──"],
-      ["#", "Fecha", "Marca", "Modelo", "Talla", "Cliente", "Pares", "Precio/par", "Total", "Nota"],
-      ...filtered.map((s) => [
-        `#${s.id}`,
-        fmt(s.createdAt),
-        s.size?.product?.brand?.name ?? "",
-        s.size?.product?.name        ?? "",
-        s.size?.number               ?? "",
-        s.buyerName                  ?? "",
-        s.quantity,
-        `$${s.pricePerPair.toFixed(2)}`,
-        `$${(s.quantity * s.pricePerPair).toFixed(2)}`,
-        s.note ?? "",
-      ]),
-      [],
-      ["── TOP MODELOS ──"],
-      ["Modelo", "Marca", "Pares vendidos", "Total cobrado"],
-      ...topModels.map((m) => [m.name, m.brand, m.pairs, `$${m.revenue.toFixed(2)}`]),
+    const topHeaders = ["#", "Modelo", "Marca", "Ventas", "Pares vendidos", "Total cobrado"];
+    const topRows    = topModels.map((m, i) => [i + 1, m.name, m.brand, m.sales, m.pairs, m.revenue]);
+    const wsTop      = XLSX.utils.aoa_to_sheet([topHeaders, ...topRows]);
+    wsTop["!cols"]   = [
+      { wch: 5  },
+      { wch: 32 },
+      { wch: 14 },
+      { wch: 9  },
+      { wch: 14 },
+      { wch: 14 },
     ];
+    // Format Total cobrado column
+    for (let r = 1; r <= topRows.length; r++) {
+      const cellRef = `F${r + 1}`;
+      if (wsTop[cellRef] && typeof wsTop[cellRef].v === "number") {
+        wsTop[cellRef].z = '"$"#,##0.00';
+      }
+    }
+    XLSX.utils.book_append_sheet(wb, wsTop, "Top Modelos");
 
-    const csv = rows
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `ventas-gucha-${label.replace(/[\s/→]+/g, "-").toLowerCase()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // ── Download ─────────────────────────────────────────────────────────
+    const fileName = `reporte-ventas-gucha-${label.replace(/[\s/→]+/g, "-").toLowerCase()}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   }
 
   return (
@@ -242,9 +291,9 @@ export default function SalesRegister({ onRevert }: Props) {
           />
         </div>
         <button
-          onClick={downloadCSV}
+          onClick={downloadExcel}
           disabled={filtered.length === 0}
-          title={`Descargar reporte · ${periodLabel()}`}
+          title={`Descargar reporte Excel · ${periodLabel()}`}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[11px] font-bold hover:bg-gucha-green/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap flex-shrink-0"
         >
           <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
@@ -252,7 +301,7 @@ export default function SalesRegister({ onRevert }: Props) {
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          <span className="hidden sm:inline">Descargar CSV</span>
+          <span className="hidden sm:inline">Descargar Excel</span>
         </button>
       </div>
 
