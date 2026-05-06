@@ -143,17 +143,16 @@ export default function FilterBar({ filters, onChange, brands, sizes, isAdmin }:
         </div>
       )}
 
-      {/* ── Cliente: Solo disponibles ── */}
+      {/* ── Cliente: Solo disponibles + Limpiar en la misma fila ── */}
       {!isAdmin && (
-        <div className="py-2">
+        <div className="py-2 flex items-center gap-2">
           <button type="button"
             onClick={() => set({ onlyAvailable: !filters.onlyAvailable })}
-            className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl border text-[11px] font-semibold transition-all ${
+            className={`flex items-center gap-3 flex-1 px-3.5 py-2.5 rounded-xl border text-[11px] font-semibold transition-all ${
               filters.onlyAvailable
                 ? "bg-gucha-green-dark/40 border-gucha-green/40 text-gucha-green-light"
                 : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/40"
             }`}>
-            {/* Toggle pill */}
             <div className={`relative w-8 h-4 rounded-full transition-colors flex-shrink-0 ${
               filters.onlyAvailable ? "bg-gucha-green-light" : "bg-gucha-border"
             }`}>
@@ -163,11 +162,19 @@ export default function FilterBar({ filters, onChange, brands, sizes, isAdmin }:
             </div>
             Solo disponibles
           </button>
+
+          {hasActive && (
+            <button type="button"
+              onClick={() => onChange(defaultFilters)}
+              className="flex-shrink-0 px-3 py-2.5 rounded-xl border border-gucha-border/50 hover:border-gucha-subtle/40 bg-[#0d0d0d] text-[10px] text-gucha-muted hover:text-white transition-colors whitespace-nowrap">
+              ✕ Limpiar
+            </button>
+          )}
         </div>
       )}
 
-      {/* ── Limpiar ── */}
-      {hasActive && (
+      {/* ── Limpiar (admin, sin toggle de disponibles) ── */}
+      {isAdmin && hasActive && (
         <div className="pt-1">
           <button type="button"
             onClick={() => onChange(defaultFilters)}
