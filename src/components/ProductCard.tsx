@@ -8,46 +8,66 @@ import ImageLightbox from "./ImageLightbox";
 import SaleModal from "./SaleModal";
 
 interface Props {
-  product:         ProductData;
-  index:           number;
-  isAdmin:         boolean;
-  onSell:          (productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) => Promise<void>;
-  onRevertSale:    (saleId: number) => Promise<void>;
-  onEdit:          (product: ProductData) => void;
-  onDelete:        (productId: number) => void;
-  selectedSizes?:  number[];
-  onSelectSize?:   (productId: number, sizeId: number) => void;
+  product:             ProductData;
+  index:               number;
+  isAdmin:             boolean;
+  onSell:              (productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) => Promise<void>;
+  onEdit:              (product: ProductData) => void;
+  onDelete:            (productId: number) => void;
+  onToggleHidden?:     (productId: number, hidden: boolean) => void;
+  onToggleSizeHidden?: (productId: number, sizeId: number, hidden: boolean) => void;
+  selectedSizes?:      number[];
+  onSelectSize?:       (productId: number, sizeId: number) => void;
 }
 
-export default function ProductCard({ product, index, isAdmin, onSell, onRevertSale, onEdit, onDelete, selectedSizes = [], onSelectSize }: Props) {
+function EyeIcon({ open }: { open: boolean }) {
+  return open ? (
+    <svg viewBox="0 0 24 24" className="w-3 h-3 fill-none stroke-current stroke-[2.5]" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" className="w-3 h-3 fill-none stroke-current stroke-[2.5]" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
+export default function ProductCard({
+  product, index, isAdmin, onSell, onEdit, onDelete,
+  onToggleHidden, onToggleSizeHidden,
+  selectedSizes = [], onSelectSize,
+}: Props) {
   const [lightbox,   setLightbox]   = useState(false);
   const [saleTarget, setSaleTarget] = useState<SizeData | null>(null);
 
-  function handleAdminToggle(sizeId: number) {
-    const size = product.sizes.find((s) => s.id === sizeId);
-    if (!size) return;
-    setSaleTarget(size);
-  }
-
-  // Tallas visibles en la tarjeta (excluir ocultas)
+  // For client view: only visible sizes
   const visibleSizes = product.sizes.filter((s) => !s.hidden);
+  // For admin view: all sizes sorted
+  const allSizesSorted = [...product.sizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
 
-  const totalPairs = visibleSizes.reduce((acc, s) => acc + s.quantity, 0);
-  const soldPairs  = visibleSizes.reduce((acc, s) => acc + s.sold,     0);
-  const available  = totalPairs - soldPairs;
-  const isOut      = totalPairs > 0 && available === 0;
-  const pct        = totalPairs > 0 ? Math.round((soldPairs / totalPairs) * 100) : 0;
+  const displaySizes = isAdmin ? visibleSizes : visibleSizes;
+  const totalPairs   = visibleSizes.reduce((acc, s) => acc + s.quantity, 0);
+  const soldPairs    = visibleSizes.reduce((acc, s) => acc + s.sold,     0);
+  const available    = totalPairs - soldPairs;
+  const isOut        = totalPairs > 0 && available === 0;
+  const pct          = totalPairs > 0 ? Math.round((soldPairs / totalPairs) * 100) : 0;
+
+  const hiddenSizes = product.sizes.filter((s) => s.hidden);
 
   return (
     <>
     <div
       className="relative bg-card-gradient border border-gucha-border rounded-2xl overflow-hidden mb-3 shadow-card animate-fade-up"
-      style={{ animationDelay: `${index * 60}ms` }}
+      style={{ animationDelay: `${index * 60}ms`, opacity: product.hidden ? 0.45 : 1 }}
     >
       {/* status accent bar */}
       <div
         className={`absolute left-0 top-0 h-full w-[3px] ${
-          isOut
+          product.hidden
+            ? "bg-gucha-muted/30"
+            : isOut
             ? "bg-gucha-red"
             : "bg-gradient-to-b from-gucha-green via-gucha-green to-gucha-green/20"
         }`}
@@ -58,7 +78,7 @@ export default function ProductCard({ product, index, isAdmin, onSell, onRevertS
         {/* top row */}
         <div className="flex gap-3.5 items-start mb-3">
 
-          {/* image — clickeable para ver en grande */}
+          {/* image */}
           <div
             onClick={() => product.imageUrl && setLightbox(true)}
             className={`relative w-[100px] h-[82px] bg-[#0d0d0d] rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-gucha-border/50 group ${product.imageUrl ? "cursor-zoom-in" : ""}`}
@@ -72,7 +92,6 @@ export default function ProductCard({ product, index, isAdmin, onSell, onRevertS
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
                   unoptimized
                 />
-                {/* hover hint */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center">
                   <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-lg">🔍</span>
                 </div>
@@ -96,12 +115,25 @@ export default function ProductCard({ product, index, isAdmin, onSell, onRevertS
                 <div className="flex gap-1 -mt-0.5 -mr-0.5">
                   <button
                     onClick={() => onEdit(product)}
+                    title="Editar producto"
                     className="w-6 h-6 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle transition-colors text-[11px]"
                   >
                     ✎
                   </button>
                   <button
+                    onClick={() => onToggleHidden?.(product.id, !product.hidden)}
+                    title={product.hidden ? "Mostrar producto" : "Ocultar producto"}
+                    className={`w-6 h-6 flex items-center justify-center rounded-lg border transition-colors ${
+                      product.hidden
+                        ? "bg-gucha-dark border-gucha-green/40 text-gucha-green-light"
+                        : "bg-gucha-dark border-gucha-border text-gucha-muted hover:text-white"
+                    }`}
+                  >
+                    <EyeIcon open={!product.hidden} />
+                  </button>
+                  <button
                     onClick={() => onDelete(product.id)}
+                    title="Eliminar producto"
                     className="w-6 h-6 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-gucha-red-light hover:border-gucha-red/40 transition-colors text-[10px]"
                   >
                     ✕
@@ -110,7 +142,7 @@ export default function ProductCard({ product, index, isAdmin, onSell, onRevertS
               )}
             </div>
 
-            <p className="text-[13px] font-semibold text-white leading-snug mb-2 pr-1">
+            <p className={`text-[13px] font-semibold leading-snug mb-2 pr-1 ${product.hidden ? "line-through text-gucha-muted" : "text-white"}`}>
               {product.name}
             </p>
 
@@ -120,7 +152,11 @@ export default function ProductCard({ product, index, isAdmin, onSell, onRevertS
                   ${product.price.toFixed(0)}
                 </span>
               )}
-              {isOut ? (
+              {product.hidden ? (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-border text-gucha-muted border border-gucha-border/60 tracking-wider uppercase">
+                  Oculto
+                </span>
+              ) : isOut ? (
                 <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-md bg-gucha-red-dark/50 text-gucha-red-light border border-gucha-red/20 tracking-wider uppercase">
                   <span className="w-1.5 h-1.5 rounded-full bg-gucha-red inline-block" />
                   Agotado
@@ -151,34 +187,102 @@ export default function ProductCard({ product, index, isAdmin, onSell, onRevertS
           </div>
         )}
 
-        {/* size pills */}
-        {visibleSizes.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {[...visibleSizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number)).map((size) => (
-              <SizePill
-                key={size.id}
-                size={size}
-                isAdmin={isAdmin}
-                onToggle={handleAdminToggle}
-                selected={selectedSizes.includes(size.id)}
-                onSelect={(sizeId) => onSelectSize?.(product.id, sizeId)}
-              />
-            ))}
+        {/* ── ADMIN size view: split pill [number | 👁] ── */}
+        {isAdmin ? (
+          <div className="space-y-2">
+            {/* Visible sizes */}
+            {allSizesSorted.filter((s) => !s.hidden).length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {allSizesSorted.filter((s) => !s.hidden).map((size) => {
+                  const isSold = size.sold >= size.quantity;
+                  return (
+                    <div key={size.id}
+                      className={`inline-flex items-stretch rounded-lg border text-[11px] overflow-hidden transition-all ${
+                        isSold
+                          ? "border-gucha-red/30 bg-gucha-red-dark/20"
+                          : "border-gucha-border bg-gucha-dark"
+                      }`}>
+                      {/* click = open sale modal */}
+                      <button
+                        onClick={() => setSaleTarget(size)}
+                        title={isSold ? `Talla ${size.number} · agotada` : `Registrar venta talla ${size.number}`}
+                        className={`px-2.5 py-1.5 font-semibold transition-colors ${
+                          isSold
+                            ? "text-gucha-red/60 line-through cursor-default"
+                            : "text-[#ccc] hover:text-white hover:bg-[#222] active:scale-95"
+                        }`}
+                      >
+                        {size.number}
+                      </button>
+                      {/* click = hide size */}
+                      <button
+                        onClick={() => onToggleSizeHidden?.(product.id, size.id, true)}
+                        title="Ocultar talla"
+                        className="px-1.5 flex items-center border-l border-gucha-border/40 text-gucha-muted/60 hover:text-gucha-red-light transition-colors"
+                      >
+                        <EyeIcon open={true} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Hidden sizes */}
+            {hiddenSizes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {hiddenSizes
+                  .sort((a, b) => parseFloat(a.number) - parseFloat(b.number))
+                  .map((size) => (
+                    <button
+                      key={size.id}
+                      onClick={() => onToggleSizeHidden?.(product.id, size.id, false)}
+                      title={`Talla ${size.number} oculta · clic para mostrar`}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gucha-border/30 text-gucha-muted/40 text-[11px] font-semibold line-through hover:text-gucha-green-light hover:border-gucha-green/30 transition-colors"
+                    >
+                      <EyeIcon open={false} />
+                      {size.number}
+                    </button>
+                  ))}
+              </div>
+            )}
+
+            {product.sizes.length === 0 && (
+              <p className="text-[10px] text-gucha-muted italic">Sin tallas registradas</p>
+            )}
+
+            {product.sizes.length > 0 && (
+              <p className="text-[9px] text-gucha-muted/50 tracking-wide">
+                Toca el número para vender · 👁 para ocultar
+              </p>
+            )}
           </div>
         ) : (
-          <p className="text-[10px] text-gucha-muted italic">Sin tallas registradas</p>
-        )}
+          /* ── CLIENT size view ── */
+          <>
+            {displaySizes.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {[...displaySizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number)).map((size) => (
+                  <SizePill
+                    key={size.id}
+                    size={size}
+                    isAdmin={false}
+                    onToggle={() => {}}
+                    selected={selectedSizes.includes(size.id)}
+                    onSelect={(sizeId) => onSelectSize?.(product.id, sizeId)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-gucha-muted italic">Sin tallas disponibles</p>
+            )}
 
-        {/* hints */}
-        {isAdmin && visibleSizes.length > 0 && (
-          <p className="text-[9px] text-gucha-muted/50 mt-2 tracking-wide">
-            Toca las tallas para registrar ventas
-          </p>
-        )}
-        {!isAdmin && visibleSizes.some((s) => s.sold < s.quantity) && (
-          <p className="text-[9px] text-gucha-green-light/50 mt-2 tracking-wide">
-            Toca las tallas que te interesan para ordenar
-          </p>
+            {displaySizes.some((s) => s.sold < s.quantity) && (
+              <p className="text-[9px] text-gucha-green-light/50 mt-2 tracking-wide">
+                Toca las tallas que te interesan para ordenar
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -197,11 +301,11 @@ export default function ProductCard({ product, index, isAdmin, onSell, onRevertS
         sizeNumber={saleTarget.number}
         available={saleTarget.quantity - saleTarget.sold}
         listPrice={product.price ?? undefined}
+        showRevert={false}
         onSell={async (qty, price, buyer, note) => {
           await onSell(product.id, saleTarget.id, qty, price, buyer, note);
           setSaleTarget(null);
         }}
-        onRevert={onRevertSale}
         onClose={() => setSaleTarget(null)}
       />
     )}

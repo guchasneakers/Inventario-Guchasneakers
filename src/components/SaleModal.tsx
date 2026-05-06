@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import type { SaleRecord } from "@/types";
 
 interface Props {
-  sizeId:      number;
-  sizeNumber:  string;
-  available:   number;
-  listPrice?:  number;
-  onSell:      (qty: number, price: number, buyer: string, note: string) => Promise<void>;
-  onRevert:    (saleId: number) => Promise<void>;
-  onClose:     () => void;
+  sizeId:       number;
+  sizeNumber:   string;
+  available:    number;
+  listPrice?:   number;
+  onSell:       (qty: number, price: number, buyer: string, note: string) => Promise<void>;
+  onRevert?:    (saleId: number) => Promise<void>;
+  showRevert?:  boolean;   // default true — pass false to hide the revert tab
+  onClose:      () => void;
 }
 
 type Mode = "sell" | "revert";
@@ -21,8 +22,13 @@ function fmt(date: string) {
   }).format(new Date(date));
 }
 
-export default function SaleModal({ sizeId, sizeNumber, available, listPrice, onSell, onRevert, onClose }: Props) {
-  const [mode,    setMode]    = useState<Mode>(available > 0 ? "sell" : "revert");
+export default function SaleModal({
+  sizeId, sizeNumber, available, listPrice,
+  onSell, onRevert, showRevert = true, onClose,
+}: Props) {
+  const [mode,    setMode]    = useState<Mode>(
+    (showRevert && available === 0) ? "revert" : "sell"
+  );
   const [qty,     setQty]     = useState(1);
   const [price,   setPrice]   = useState(listPrice ?? 0);
   const [buyer,   setBuyer]   = useState("");
@@ -40,15 +46,15 @@ export default function SaleModal({ sizeId, sizeNumber, available, listPrice, on
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Load sales when switching to revert tab
+  // Load sales only when revert tab is visible and active
   useEffect(() => {
-    if (mode !== "revert") return;
+    if (mode !== "revert" || !showRevert) return;
     setLoadingSales(true);
     fetch(`/api/sales?sizeId=${sizeId}`)
       .then((r) => r.json())
       .then((data) => setSales(Array.isArray(data) ? data : []))
       .finally(() => setLoadingSales(false));
-  }, [mode, sizeId]);
+  }, [mode, sizeId, showRevert]);
 
   const maxQty      = available;
   const safeQty     = Math.max(1, Math.min(qty, maxQty));
@@ -65,6 +71,7 @@ export default function SaleModal({ sizeId, sizeNumber, available, listPrice, on
   }
 
   async function handleRevert(saleId: number) {
+    if (!onRevert) return;
     setReverting(saleId);
     await onRevert(saleId);
     setSales((prev) => prev.filter((s) => s.id !== saleId));
@@ -90,21 +97,23 @@ export default function SaleModal({ sizeId, sizeNumber, available, listPrice, on
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-gucha-dark border border-gucha-border text-gucha-muted hover:text-white transition-colors text-[11px]">✕</button>
         </div>
 
-        {/* tabs */}
-        <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5 mx-5 mt-4 flex-shrink-0">
-          <button type="button" onClick={() => setMode("sell")} disabled={maxQty === 0}
-            className={["flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all",
-              mode === "sell" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-            ].join(" ")}>
-            Registrar
-          </button>
-          <button type="button" onClick={() => setMode("revert")}
-            className={["flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all",
-              mode === "revert" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"
-            ].join(" ")}>
-            Revertir
-          </button>
-        </div>
+        {/* tabs — only when showRevert is enabled */}
+        {showRevert && (
+          <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5 mx-5 mt-4 flex-shrink-0">
+            <button type="button" onClick={() => setMode("sell")} disabled={maxQty === 0}
+              className={["flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all",
+                mode === "sell" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              ].join(" ")}>
+              Registrar
+            </button>
+            <button type="button" onClick={() => setMode("revert")}
+              className={["flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all",
+                mode === "revert" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"
+              ].join(" ")}>
+              Revertir
+            </button>
+          </div>
+        )}
 
         {/* ── SELL mode ── */}
         {mode === "sell" && (
@@ -172,7 +181,7 @@ export default function SaleModal({ sizeId, sizeNumber, available, listPrice, on
         )}
 
         {/* ── REVERT mode ── */}
-        {mode === "revert" && (
+        {mode === "revert" && showRevert && (
           <div className="px-5 py-4 overflow-y-auto flex-1">
             {loadingSales ? (
               <div className="flex items-center justify-center py-10 gap-2">
@@ -224,7 +233,7 @@ export default function SaleModal({ sizeId, sizeNumber, available, listPrice, on
           </div>
         )}
 
-        {/* footer actions */}
+        {/* footer */}
         <div className="px-5 pb-5 pt-3 border-t border-gucha-border/60 flex-shrink-0">
           {mode === "sell" && maxQty > 0 && (
             <div className="flex gap-2">
@@ -238,7 +247,7 @@ export default function SaleModal({ sizeId, sizeNumber, available, listPrice, on
               </button>
             </div>
           )}
-          {mode === "revert" && (
+          {(mode === "revert" || (mode === "sell" && maxQty === 0)) && (
             <button onClick={onClose}
               className="w-full py-2 rounded-xl border border-gucha-border text-gucha-muted text-[12px] font-semibold hover:text-white transition-colors">
               Cerrar

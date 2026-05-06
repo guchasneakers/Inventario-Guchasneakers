@@ -207,13 +207,13 @@ export default function StockTable({
               ))}
             </div>
 
-            {/* size pills */}
+            {/* size pills — horizontal scroll on mobile */}
             {allSizeNumbers.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
                 {allSizeNumbers.map((s) => (
                   <button key={s} type="button"
                     onClick={() => setSizeFilt(sizeFilt === s ? "" : s)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                    className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
                       sizeFilt === s
                         ? "bg-gucha-dark border-gucha-subtle/60 text-white"
                         : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white hover:border-gucha-subtle/50"

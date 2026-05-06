@@ -374,9 +374,10 @@ export default function HomePage() {
           index={i}
           isAdmin={isAdmin}
           onSell={handleSale}
-          onRevertSale={handleRevertSale}
           onEdit={openEdit}
           onDelete={handleDelete}
+          onToggleHidden={isAdmin ? handleToggleHidden : undefined}
+          onToggleSizeHidden={isAdmin ? handleToggleSizeHidden : undefined}
           selectedSizes={product.sizes.filter((s) => selection[s.id]).map((s) => s.id)}
           onSelectSize={!isAdmin ? handleSelectSize : undefined}
         />
@@ -494,30 +495,103 @@ export default function HomePage() {
       <div className="md:hidden max-w-md mx-auto px-5 py-4 pb-28">
         {sidebarContent}
 
-        {/* section header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-[3px] h-4 bg-red-gradient rounded-full" />
-            <span className="text-[10px] font-bold text-gucha-subtle tracking-[0.25em]">
-              {search ? "RESULTADOS" : "COLECCIÓN"}
-            </span>
-            {!loading && (
-              <span className="text-[9px] text-gucha-muted">
-                ({filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""})
-              </span>
+        {/* ── Admin nav (mobile) ── */}
+        {isAdmin && (
+          <div className="flex items-center justify-between mb-3 mt-1">
+            <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
+              <button
+                onClick={() => setViewMode("inventory")}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${isInventory ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+              >
+                Inventario
+              </button>
+              <button
+                onClick={() => setViewMode("sales")}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${viewMode === "sales" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+              >
+                📋 Ventas
+              </button>
+            </div>
+            {isInventory && (
+              <button onClick={openAdd}
+                className="flex items-center gap-1 text-[10px] font-bold text-gucha-green-light bg-gucha-green-dark/50 border border-gucha-green/20 rounded-lg px-3 py-1.5 hover:bg-gucha-green/20 transition-colors">
+                <span className="text-sm">+</span> Agregar
+              </button>
             )}
           </div>
-          {isAdmin && (
-            <button onClick={openAdd}
-              className="flex items-center gap-1 text-[10px] font-bold text-gucha-green-light bg-gucha-green-dark/50 border border-gucha-green/20 rounded-lg px-3 py-1.5 hover:bg-gucha-green/20 transition-colors">
-              <span className="text-sm">+</span> Agregar
-            </button>
-          )}
-        </div>
+        )}
 
-        {productGrid}
+        {/* ── Ventas (mobile) ── */}
+        {viewMode === "sales" && (
+          <SalesRegister onRevert={handleRevertSale} />
+        )}
 
-        {!loading && products.length > 0 && (
+        {/* ── Inventario (mobile) ── */}
+        {isInventory && (
+          <>
+            {/* Cards / Tabla toggle (admin only) */}
+            {isAdmin && (
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex rounded-xl overflow-hidden border border-gucha-border bg-[#0d0d0d] p-0.5 gap-0.5">
+                  <button
+                    onClick={() => setInventoryView("cards")}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${inventoryView === "cards" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                  >
+                    ▦ Tarjetas
+                  </button>
+                  <button
+                    onClick={() => setInventoryView("table")}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${inventoryView === "table" ? "bg-gucha-dark text-white" : "text-gucha-muted hover:text-white"}`}
+                  >
+                    ≡ Tabla
+                  </button>
+                </div>
+                {/* count */}
+                {!loading && (
+                  <span className="text-[11px] text-gucha-muted">
+                    {filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""} modelos
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Client section header */}
+            {!isAdmin && (
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-[3px] h-4 bg-red-gradient rounded-full" />
+                <span className="text-[10px] font-bold text-gucha-subtle tracking-[0.25em]">
+                  {search ? "RESULTADOS" : "COLECCIÓN"}
+                </span>
+                {!loading && (
+                  <span className="text-[9px] text-gucha-muted">
+                    ({filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""})
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Table or Cards */}
+            {isAdmin && inventoryView === "table" ? (
+              <div className="overflow-x-auto -mx-5 px-5">
+                <StockTable
+                  products={filteredProducts}
+                  onEdit={openEdit}
+                  onDelete={handleDelete}
+                  onToggleHidden={handleToggleHidden}
+                  onToggleSizeHidden={handleToggleSizeHidden}
+                  onDeleteSize={handleDeleteSize}
+                  onEditSize={handleEditSize}
+                  onSell={handleSale}
+                  onRevertSale={handleRevertSale}
+                />
+              </div>
+            ) : (
+              productGrid
+            )}
+          </>
+        )}
+
+        {!loading && products.length > 0 && viewMode === "inventory" && inventoryView === "cards" && (
           <div className="border-t border-gucha-border-2 mt-4">
             {footerContent}
           </div>
