@@ -8,8 +8,9 @@ import SearchBar    from "@/components/SearchBar";
 import ProductCard  from "@/components/ProductCard";
 import ProductModal from "@/components/ProductModal";
 import LoginModal   from "@/components/LoginModal";
-import StockTable     from "@/components/StockTable";
-import SalesRegister  from "@/components/SalesRegister";
+import StockTable       from "@/components/StockTable";
+import MobileStockList  from "@/components/MobileStockList";
+import SalesRegister    from "@/components/SalesRegister";
 import FilterBar, { defaultFilters, type Filters } from "@/components/FilterBar";
 import type { BrandData, ProductData, ProductFormData, Stats as StatsType } from "@/types";
 
@@ -583,19 +584,17 @@ export default function HomePage() {
 
             {/* Table or Cards */}
             {isAdmin && inventoryView === "table" ? (
-              <div className="overflow-x-auto -mx-5 px-5">
-                <StockTable
-                  products={filteredProducts}
-                  onEdit={openEdit}
-                  onDelete={handleDelete}
-                  onToggleHidden={handleToggleHidden}
-                  onToggleSizeHidden={handleToggleSizeHidden}
-                  onDeleteSize={handleDeleteSize}
-                  onEditSize={handleEditSize}
-                  onSell={handleSale}
-                  onRevertSale={handleRevertSale}
-                />
-              </div>
+              <MobileStockList
+                products={filteredProducts}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+                onToggleHidden={handleToggleHidden}
+                onToggleSizeHidden={handleToggleSizeHidden}
+                onDeleteSize={handleDeleteSize}
+                onEditSize={handleEditSize}
+                onSell={handleSale}
+                onRevertSale={handleRevertSale}
+              />
             ) : (
               productGrid
             )}
