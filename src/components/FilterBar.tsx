@@ -104,39 +104,6 @@ export default function FilterBar({ filters, onChange, brands, sizes, isAdmin }:
         </div>
       )}
 
-      {/* ── Precio ── */}
-      <div className="py-2">
-        <p className={`${sectionLabel} mb-2`}>Rango de precio</p>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gucha-muted text-[11px] font-bold pointer-events-none">$</span>
-            <input
-              type="number" min={0} placeholder="Mín"
-              value={filters.priceMin}
-              onChange={(e) => set({ priceMin: e.target.value })}
-              className="w-full pl-6 pr-2 py-2 bg-[#0d0d0d] border border-gucha-border rounded-xl text-[12px] text-white placeholder-gucha-muted/40 outline-none focus:border-gucha-subtle/60 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
-          <span className="text-gucha-muted/50 text-[11px] flex-shrink-0">—</span>
-          <div className="relative flex-1">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gucha-muted text-[11px] font-bold pointer-events-none">$</span>
-            <input
-              type="number" min={0} placeholder="Máx"
-              value={filters.priceMax}
-              onChange={(e) => set({ priceMax: e.target.value })}
-              className="w-full pl-6 pr-2 py-2 bg-[#0d0d0d] border border-gucha-border rounded-xl text-[12px] text-white placeholder-gucha-muted/40 outline-none focus:border-gucha-subtle/60 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
-          {(filters.priceMin !== "" || filters.priceMax !== "") && (
-            <button type="button"
-              onClick={() => set({ priceMin: "", priceMax: "" })}
-              className="text-gucha-muted/50 hover:text-white transition-colors text-[12px] flex-shrink-0">
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* ── Talla ── */}
       {sizes.length > 0 && (
         <div className="py-2">
