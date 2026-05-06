@@ -11,6 +11,7 @@ interface Props {
   onSell:       (qty: number, price: number, buyer: string, note: string) => Promise<void>;
   onRevert?:    (saleId: number) => Promise<void>;
   showRevert?:  boolean;   // default true — pass false to hide the revert tab
+  onAddToCart?: (qty: number, price: number) => void;
   onClose:      () => void;
 }
 
@@ -24,7 +25,7 @@ function fmt(date: string) {
 
 export default function SaleModal({
   sizeId, sizeNumber, available, listPrice,
-  onSell, onRevert, showRevert = true, onClose,
+  onSell, onRevert, showRevert = true, onAddToCart, onClose,
 }: Props) {
   const [mode,    setMode]    = useState<Mode>(
     (showRevert && available === 0) ? "revert" : "sell"
@@ -236,15 +237,24 @@ export default function SaleModal({
         {/* footer */}
         <div className="px-5 pb-5 pt-3 border-t border-gucha-border/60 flex-shrink-0">
           {mode === "sell" && maxQty > 0 && (
-            <div className="flex gap-2">
-              <button onClick={onClose}
-                className="flex-1 py-2 rounded-xl border border-gucha-border text-gucha-muted text-[12px] font-semibold hover:text-white transition-colors">
-                Cancelar
-              </button>
-              <button onClick={handleSell} disabled={saving}
-                className="flex-1 py-2 rounded-xl bg-red-gradient text-white text-[12px] font-bold hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all shadow-red-glow">
-                {saving ? "Registrando…" : "Confirmar venta"}
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button onClick={onClose}
+                  className="flex-1 py-2 rounded-xl border border-gucha-border text-gucha-muted text-[12px] font-semibold hover:text-white transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={handleSell} disabled={saving}
+                  className="flex-1 py-2 rounded-xl bg-red-gradient text-white text-[12px] font-bold hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all shadow-red-glow">
+                  {saving ? "Registrando…" : "Confirmar venta"}
+                </button>
+              </div>
+              {onAddToCart && (
+                <button
+                  onClick={() => { onAddToCart(safeQty, safePrice); onClose(); }}
+                  className="w-full py-2 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[12px] font-bold hover:bg-gucha-green/20 transition-all">
+                  + Añadir al carrito
+                </button>
+              )}
             </div>
           )}
           {(mode === "revert" || (mode === "sell" && maxQty === 0)) && (

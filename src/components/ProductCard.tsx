@@ -12,6 +12,7 @@ interface Props {
   index:               number;
   isAdmin:             boolean;
   editMode?:           boolean;
+  hideSoldSizes?:      boolean;
   onSell:              (productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) => Promise<void>;
   onEdit:              (product: ProductData) => void;
   onDelete:            (productId: number) => void;
@@ -19,6 +20,7 @@ interface Props {
   onToggleSizeHidden?: (productId: number, sizeId: number, hidden: boolean) => void;
   selectedSizes?:      number[];
   onSelectSize?:       (productId: number, sizeId: number) => void;
+  onAddToCart?:        (productId: number, productName: string, brand: string | null, sizeId: number, sizeNumber: string, qty: number, price: number) => void;
 }
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -36,9 +38,9 @@ function EyeIcon({ open }: { open: boolean }) {
 }
 
 export default function ProductCard({
-  product, index, isAdmin, editMode = false, onSell, onEdit, onDelete,
+  product, index, isAdmin, editMode = false, hideSoldSizes = false, onSell, onEdit, onDelete,
   onToggleHidden, onToggleSizeHidden,
-  selectedSizes = [], onSelectSize,
+  selectedSizes = [], onSelectSize, onAddToCart,
 }: Props) {
   const [lightbox,   setLightbox]   = useState(false);
   const [saleTarget, setSaleTarget] = useState<SizeData | null>(null);
@@ -48,7 +50,7 @@ export default function ProductCard({
   // For admin view: all sizes sorted
   const allSizesSorted = [...product.sizes].sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
 
-  const displaySizes = isAdmin ? visibleSizes : visibleSizes;
+  const displaySizes = isAdmin ? visibleSizes : (hideSoldSizes ? visibleSizes.filter((s) => s.sold < s.quantity) : visibleSizes);
   const totalPairs   = visibleSizes.reduce((acc, s) => acc + s.quantity, 0);
   const soldPairs    = visibleSizes.reduce((acc, s) => acc + s.sold,     0);
   const available    = totalPairs - soldPairs;
@@ -299,6 +301,9 @@ export default function ProductCard({
           await onSell(product.id, saleTarget.id, qty, price, buyer, note);
           setSaleTarget(null);
         }}
+        onAddToCart={onAddToCart ? (qty, price) => {
+          onAddToCart(product.id, product.name, product.brand?.name ?? null, saleTarget!.id, saleTarget!.number, qty, price);
+        } : undefined}
         onClose={() => setSaleTarget(null)}
       />
     )}

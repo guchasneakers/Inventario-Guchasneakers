@@ -13,7 +13,8 @@ import StockTable       from "@/components/StockTable";
 import MobileStockList  from "@/components/MobileStockList";
 import SalesRegister    from "@/components/SalesRegister";
 import FilterBar, { defaultFilters, type Filters } from "@/components/FilterBar";
-import type { BrandData, ProductData, ProductFormData, Stats as StatsType } from "@/types";
+import CartModal from "@/components/CartModal";
+import type { BrandData, CartItem, ProductData, ProductFormData, Stats as StatsType } from "@/types";
 
 function computeStats(products: ProductData[], brands: BrandData[]): StatsType {
   return {
@@ -112,6 +113,8 @@ export default function HomePage() {
   const [modalOpen,   setModalOpen]   = useState(false);
   const [editProduct, setEditProduct] = useState<ProductData | null>(null);
   const [toast,       setToast]       = useState("");
+  const [cart,        setCart]        = useState<CartItem[]>([]);
+  const [cartOpen,    setCartOpen]    = useState(false);
 
   // { sizeId → { productName, sizeNumber } }
   const [selection, setSelection] = useState<Record<number, { productName: string; sizeNumber: string }>>({});
@@ -171,7 +174,7 @@ export default function HomePage() {
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    setIsAdmin(false); showToast("Sesión cerrada");
+    window.location.reload();
   }
 
   async function handleSave(data: ProductFormData, id?: number) {
@@ -288,6 +291,22 @@ export default function HomePage() {
       );
     }
     showToast("Venta revertida");
+  }
+
+  function handleAddToCart(productId: number, productName: string, brand: string | null, sizeId: number, sizeNumber: string, qty: number, price: number) {
+    setCart((prev) => [...prev, { productId, productName, brand, sizeId, sizeNumber, qty, price }]);
+    showToast("Añadido al carrito 🛒");
+  }
+
+  function handleRemoveFromCart(index: number) {
+    setCart((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleCartCheckout(buyer: string, note: string) {
+    for (const item of cart) {
+      await handleSale(item.productId, item.sizeId, item.qty, item.price, buyer, note);
+    }
+    setCart([]);
   }
 
   function openAdd()                { setEditProduct(null); setModalOpen(true); }
@@ -472,6 +491,7 @@ export default function HomePage() {
           index={i}
           isAdmin={isAdmin}
           editMode={editMode}
+          hideSoldSizes={!isAdmin && filters.onlyAvailable}
           onSell={handleSale}
           onEdit={openEdit}
           onDelete={handleDelete}
@@ -479,6 +499,7 @@ export default function HomePage() {
           onToggleSizeHidden={isAdmin ? handleToggleSizeHidden : undefined}
           selectedSizes={product.sizes.filter((s) => selection[s.id]).map((s) => s.id)}
           onSelectSize={!isAdmin ? handleSelectSize : undefined}
+          onAddToCart={isAdmin ? handleAddToCart : undefined}
         />
       ))}
     </div>
@@ -583,6 +604,15 @@ export default function HomePage() {
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
+                    {cart.length > 0 && (
+                      <button onClick={() => setCartOpen(true)}
+                        className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[11px] font-bold hover:bg-gucha-green/20 transition-all">
+                        🛒
+                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gucha-red text-white text-[9px] font-black flex items-center justify-center">
+                          {cart.length}
+                        </span>
+                      </button>
+                    )}
                     <button
                       onClick={() => downloadInventoryExcel(products)}
                       title="Descargar inventario en Excel"
@@ -615,6 +645,7 @@ export default function HomePage() {
                     onEditSize={handleEditSize}
                     onSell={handleSale}
                     onRevertSale={handleRevertSale}
+                    onAddToCart={handleAddToCart}
                   />
                 : productGrid}
             </>
@@ -701,6 +732,15 @@ export default function HomePage() {
                   </svg>
                   Descargar Excel
                 </button>
+                {cart.length > 0 && (
+                  <button onClick={() => setCartOpen(true)}
+                    className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gucha-green-dark/40 border border-gucha-green/30 text-gucha-green-light text-[11px] font-bold">
+                    🛒
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gucha-red text-white text-[9px] font-black flex items-center justify-center">
+                      {cart.length}
+                    </span>
+                  </button>
+                )}
                 {!loading && (
                   <span className="text-[11px] text-gucha-muted ml-auto">
                     {filteredProducts.length}{filteredProducts.length !== products.length ? `/${products.length}` : ""} modelos
@@ -737,6 +777,7 @@ export default function HomePage() {
                 onEditSize={handleEditSize}
                 onSell={handleSale}
                 onRevertSale={handleRevertSale}
+                onAddToCart={handleAddToCart}
               />
             ) : (
               productGrid
@@ -804,6 +845,14 @@ export default function HomePage() {
           onBrandCreated={handleBrandCreated}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
+        />
+      )}
+      {cartOpen && (
+        <CartModal
+          items={cart}
+          onRemove={handleRemoveFromCart}
+          onCheckout={handleCartCheckout}
+          onClose={() => setCartOpen(false)}
         />
       )}
     </main>

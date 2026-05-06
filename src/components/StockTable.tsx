@@ -22,6 +22,7 @@ interface Props {
   onEditSize:         (productId: number, sizeId: number, number: string, quantity: number) => Promise<void>;
   onSell:             (productId: number, sizeId: number, qty: number, price: number, buyer: string, note: string) => Promise<void>;
   onRevertSale:       (saleId: number) => Promise<void>;
+  onAddToCart?:       (productId: number, productName: string, brand: string | null, sizeId: number, sizeNumber: string, qty: number, price: number) => void;
 }
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -87,7 +88,7 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
 
 export default function StockTable({
   products, editMode = false, onEdit, onDelete, onToggleHidden,
-  onToggleSizeHidden, onDeleteSize, onEditSize, onSell, onRevertSale,
+  onToggleSizeHidden, onDeleteSize, onEditSize, onSell, onRevertSale, onAddToCart,
 }: Props) {
   const [selectedSizes, setSelectedSizes] = useState<Record<number, number>>({});
   const [saleTarget,    setSaleTarget]    = useState<{ size: SizeData; product: ProductData } | null>(null);
@@ -462,6 +463,9 @@ export default function StockTable({
             setSaleTarget(null);
           }}
           onRevert={onRevertSale}
+          onAddToCart={onAddToCart ? (qty, price) => {
+            onAddToCart(saleTarget.product.id, saleTarget.product.name, saleTarget.product.brand?.name ?? null, saleTarget.size.id, saleTarget.size.number, qty, price);
+          } : undefined}
           onClose={() => setSaleTarget(null)}
         />
       )}

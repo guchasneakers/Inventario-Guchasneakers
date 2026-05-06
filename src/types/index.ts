@@ -63,3 +63,13 @@ export type ProductFormData = {
   imageUrl:    string;
   sizes:       SizeFormEntry[];
 };
+
+export interface CartItem {
+  productId:   number;
+  productName: string;
+  brand:       string | null;
+  sizeId:      number;
+  sizeNumber:  string;
+  qty:         number;
+  price:       number;
+}
