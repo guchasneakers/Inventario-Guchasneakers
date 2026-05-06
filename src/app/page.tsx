@@ -422,8 +422,8 @@ export default function HomePage() {
         {adminButton}
       </div>
 
-      {/* Desktop: mes + botón admin */}
-      <div className="hidden md:flex items-center justify-between mb-5">
+      {/* Desktop: mes + botón admin centrados */}
+      <div className="hidden md:flex flex-col items-center gap-2 mb-5">
         <MonthTag />
         {adminButton}
       </div>
