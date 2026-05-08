@@ -59,6 +59,7 @@ export default function StockTable({
 
   // ── Collect brands and sizes present in products (for filters) ──────────
   const allBrands = useMemo(() => {
+    if (!Array.isArray(products)) return [];
     const map = new Map<string, string>();
     products.forEach((p) => {
       if (p.brand) map.set(p.brand.name, p.brand.name);
@@ -67,6 +68,7 @@ export default function StockTable({
   }, [products]);
 
   const allSizeNumbers = useMemo(() => {
+    if (!Array.isArray(products)) return [];
     const set = new Set<string>();
     products.forEach((p) => p.sizes.forEach((s) => set.add(s.number)));
     return US_SIZES.filter((s) => set.has(s));
@@ -74,6 +76,7 @@ export default function StockTable({
 
   // ── Apply filters ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
+    if (!Array.isArray(products)) return [];
     return products.filter((p) => {
       if (search && !p.name.toLowerCase().includes(search.toLowerCase()) &&
           !(p.brand?.name.toLowerCase().includes(search.toLowerCase()))) return false;
@@ -97,6 +100,7 @@ export default function StockTable({
 
   // ── Group by brand ────────────────────────────────────────────────────────
   const groups = useMemo(() => {
+    if (!Array.isArray(filtered)) return [];
     const brandMap = new Map<string, { label: string; products: ProductData[] }>();
     filtered.forEach((p) => {
       const key   = p.brand?.name ?? "__sin_marca__";
@@ -110,9 +114,10 @@ export default function StockTable({
   }, [filtered]);
 
   // ── Revenue totals ────────────────────────────────────────────────────────
-  const grandList = products.reduce((acc, p) =>
+  const safeProducts = Array.isArray(products) ? products : [];
+  const grandList = safeProducts.reduce((acc, p) =>
     acc + (p.price ? p.sizes.reduce((a, s) => a + s.sold * p.price!, 0) : 0), 0);
-  const grandReal = products.reduce((acc, p) =>
+  const grandReal = safeProducts.reduce((acc, p) =>
     acc + p.sizes.reduce((a, s) => a + (s.revenue ?? 0), 0), 0);
 
   return (

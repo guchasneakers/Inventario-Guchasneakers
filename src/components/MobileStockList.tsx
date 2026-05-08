@@ -95,6 +95,7 @@ export default function MobileStockList({
 
   // Group by brand
   const groups = useMemo(() => {
+    if (!Array.isArray(products)) return [];
     const brandMap = new Map<string, { label: string; products: ProductData[] }>();
     products.forEach((p) => {
       const key   = p.brand?.name ?? "__sin_marca__";

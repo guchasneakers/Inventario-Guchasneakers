@@ -162,8 +162,8 @@ export default function HomePage() {
 
   const fetchProducts = useCallback(async (q = "") => {
     const res  = await fetch(`/api/products${q ? `?search=${encodeURIComponent(q)}` : ""}`);
-    const data: ProductData[] = await res.json();
-    setProducts(data);
+    const data = await res.json();
+    setProducts(Array.isArray(data) ? data : []);
   }, []);
 
   useEffect(() => { fetchProducts().finally(() => setLoading(false)); }, [fetchProducts]);
