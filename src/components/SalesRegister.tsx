@@ -100,7 +100,7 @@ async function generateSaleInvoice(sale: SaleRecord) {
     table{width:100%;border-collapse:collapse;margin-bottom:24px}
     thead tr{border-bottom:2px solid #cc2222;background:#fafafa}
     th{padding:10px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#888}
-    td{padding:12px;font-size:13px;border-bottom:1px solid #eee;vertical-align:top}
+    td{padding:12px;font-size:13px;border-bottom:1px solid #eee;vertical-align:middle}
     .brand{font-size:9px;color:#cc2222;font-weight:900;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px}
     .center{text-align:center}.right{text-align:right}
     .total-row td{border-top:2px solid #cc2222;border-bottom:none;background:#fff9f9;padding:14px 12px}
