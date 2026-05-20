@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import ImageUpload from "@/components/ImageUpload";
-import type { SaleRecord } from "@/types";
+import type { ProductData, SaleRecord } from "@/types";
 
 interface Props {
   onRevert:          (saleId: number) => Promise<void>;
@@ -200,32 +200,72 @@ async function generateSaleInvoice(sale: SaleRecord) {
 interface EditSaleModalProps {
   sale: SaleRecord;
   onClose: () => void;
-  onSaved: (updatedSale: SaleRecord, sizeId?: number, sold?: number, revenue?: number) => void;
+  onSaved: (
+    updatedSale: SaleRecord,
+    sizeId?: number, sold?: number, revenue?: number,
+    revertedSizeId?: number, revertedSold?: number, revertedRevenue?: number,
+  ) => void;
 }
 
 function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
-  const [quantity,       setQuantity]       = useState(sale.quantity);
-  const [pricePerPair,   setPricePerPair]   = useState(sale.pricePerPair);
-  const [buyerName,      setBuyerName]      = useState(sale.buyerName ?? "");
-  const [note,           setNote]           = useState(sale.note ?? "");
-  const [imageUrl,       setImageUrl]       = useState(sale.customImageUrl ?? "");
-  const [customProduct,  setCustomProduct]  = useState(sale.customProduct ?? "");
-  const [customSize,     setCustomSize]     = useState(sale.customSize ?? "");
-  const [saving,         setSaving]         = useState(false);
-  const [error,          setError]          = useState("");
   const isFreeSale = sale.sizeId === null;
+
+  // Shared fields
+  const [quantity,      setQuantity]      = useState(sale.quantity);
+  const [pricePerPair,  setPricePerPair]  = useState(sale.pricePerPair);
+  const [buyerName,     setBuyerName]     = useState(sale.buyerName ?? "");
+  const [note,          setNote]          = useState(sale.note ?? "");
+
+  // Free sale fields
+  const [imageUrl,      setImageUrl]      = useState(sale.customImageUrl ?? "");
+  const [customProduct, setCustomProduct] = useState(sale.customProduct ?? "");
+  const [customSize,    setCustomSize]    = useState(sale.customSize ?? "");
+
+  // Inventory sale fields
+  const [products,         setProducts]         = useState<ProductData[]>([]);
+  const [loadingProducts,  setLoadingProducts]  = useState(!isFreeSale);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(
+    sale.size?.productId ?? null
+  );
+  const [selectedSizeId, setSelectedSizeId] = useState<number | null>(sale.sizeId ?? null);
+
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState("");
+
+  useEffect(() => {
+    if (isFreeSale) return;
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((data) => { setProducts(Array.isArray(data) ? data : []); })
+      .finally(() => setLoadingProducts(false));
+  }, [isFreeSale]);
+
+  const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
+  const availableSizes  = selectedProduct?.sizes ?? [];
+
+  function handleProductChange(productId: number) {
+    setSelectedProductId(productId);
+    const p = products.find((pr) => pr.id === productId);
+    setSelectedSizeId(p?.sizes[0]?.id ?? null);
+  }
 
   async function handleSave() {
     if (saving) return;
+    if (!isFreeSale && !selectedSizeId) { setError("Selecciona un size"); return; }
     setSaving(true);
     setError("");
     try {
-      const body: Record<string, unknown> = { quantity, pricePerPair, buyerName, note, customImageUrl: imageUrl };
+      const body: Record<string, unknown> = { quantity, pricePerPair, buyerName, note };
+
       if (isFreeSale) {
-        body.customProduct = customProduct;
-        body.customSize    = customSize;
+        body.customImageUrl = imageUrl;
+        body.customProduct  = customProduct;
+        body.customSize     = customSize;
+      } else {
+        body.sizeId = selectedSizeId;
       }
-      const res = await fetch(`/api/sales/${sale.id}`, {
+
+      const res  = await fetch(`/api/sales/${sale.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -236,34 +276,65 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
         setSaving(false);
         return;
       }
-      const updatedSale: SaleRecord = {
+
+      // Build updated local sale
+      let updatedSale: SaleRecord = {
         ...sale,
         quantity,
         pricePerPair,
-        buyerName:      buyerName || null,
-        note:           note      || null,
-        customImageUrl: imageUrl  || null,
-        ...(isFreeSale && {
-          customProduct: customProduct || null,
-          customSize:    customSize    || null,
-        }),
+        buyerName: buyerName || null,
+        note:      note      || null,
       };
-      onSaved(updatedSale, data.updatedSize?.id, data.updatedSize?.sold, data.updatedSize?.revenue);
+
+      if (isFreeSale) {
+        updatedSale = {
+          ...updatedSale,
+          customImageUrl: imageUrl       || null,
+          customProduct:  customProduct  || null,
+          customSize:     customSize     || null,
+        };
+      } else if (selectedSizeId !== sale.sizeId && selectedProduct) {
+        // Size changed — update the nested size/product reference locally
+        const newSize = selectedProduct.sizes.find((s) => s.id === selectedSizeId);
+        updatedSale = {
+          ...updatedSale,
+          sizeId: selectedSizeId,
+          size: newSize ? {
+            number:    newSize.number,
+            productId: selectedProduct.id,
+            product:   {
+              id:       selectedProduct.id,
+              name:     selectedProduct.name,
+              modelNum: selectedProduct.modelNum,
+              imageUrl: selectedProduct.imageUrl,
+              brand:    selectedProduct.brand,
+            },
+          } : sale.size,
+        };
+      }
+
+      onSaved(
+        updatedSale,
+        data.updatedSize?.id,      data.updatedSize?.sold,      data.updatedSize?.revenue,
+        data.revertedSize?.id,     data.revertedSize?.sold,     data.revertedSize?.revenue,
+      );
     } catch {
       setError("Error de red");
       setSaving(false);
     }
   }
 
+  const selectClass = "w-full bg-gucha-dark border border-gucha-border rounded-xl px-3.5 py-2 text-[13px] text-white outline-none focus:border-gucha-subtle/60 transition-colors appearance-none";
+
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
       onClick={onClose}>
-      <div className="bg-[#111] border border-gucha-border rounded-2xl w-full max-w-sm shadow-card animate-fade-up flex flex-col"
+      <div className="bg-[#111] border border-gucha-border rounded-2xl w-full max-w-sm shadow-card animate-fade-up flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}>
 
         {/* header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gucha-border/60">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gucha-border/60 flex-shrink-0">
           <div>
             <p className="text-[10px] text-gucha-muted tracking-widest uppercase">Editar venta</p>
             <p className="text-[14px] font-black text-white">#{sale.id}</p>
@@ -272,9 +343,41 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
         </div>
 
         {/* body */}
-        <div className="px-5 py-4 space-y-3">
+        <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
 
-          {/* Campos exclusivos de venta libre */}
+          {/* ── Inventario: selectors de producto y size ── */}
+          {!isFreeSale && (
+            <>
+              <div>
+                <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Producto</label>
+                {loadingProducts ? (
+                  <div className="text-[11px] text-gucha-muted py-2">Cargando productos…</div>
+                ) : (
+                  <select value={selectedProductId ?? ""} onChange={(e) => handleProductChange(Number(e.target.value))}
+                    className={selectClass}>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.brand?.name ? `${p.brand.name} — ` : ""}{p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div>
+                <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Size</label>
+                <select value={selectedSizeId ?? ""} onChange={(e) => setSelectedSizeId(Number(e.target.value))}
+                  className={selectClass} disabled={availableSizes.length === 0}>
+                  {availableSizes.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.number} {s.quantity - s.sold > 0 ? `(${s.quantity - s.sold} disp.)` : "(agotado)"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* ── Venta libre: texto libre ── */}
           {isFreeSale && (
             <>
               <div>
@@ -337,13 +440,15 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
               className="w-full bg-gucha-dark border border-gucha-border rounded-xl px-3.5 py-2 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"/>
           </div>
 
-          {/* Image */}
-          <div>
-            <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
-              Foto <span className="text-gucha-subtle normal-case tracking-normal">(opcional)</span>
-            </label>
-            <ImageUpload currentUrl={imageUrl} onChange={setImageUrl} />
-          </div>
+          {/* Image — solo ventas libres */}
+          {isFreeSale && (
+            <div>
+              <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
+                Foto <span className="text-gucha-subtle normal-case tracking-normal">(opcional)</span>
+              </label>
+              <ImageUpload currentUrl={imageUrl} onChange={setImageUrl} />
+            </div>
+          )}
 
           {/* Total preview */}
           <div className="flex items-center justify-between pt-1">
@@ -355,7 +460,7 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
         </div>
 
         {/* footer */}
-        <div className="px-5 pb-5 space-y-2">
+        <div className="px-5 pb-5 pt-3 border-t border-gucha-border/60 flex-shrink-0 space-y-2">
           <button onClick={handleSave} disabled={saving}
             className="w-full py-2.5 rounded-xl bg-red-gradient text-white text-[12px] font-bold hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all shadow-red-glow">
             {saving ? "Guardando…" : "Guardar cambios"}
@@ -403,13 +508,15 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
 
   function handleEditSaved(
     updatedSale: SaleRecord,
-    sizeId?: number,
-    sold?: number,
-    revenue?: number,
+    sizeId?: number, sold?: number, revenue?: number,
+    revertedSizeId?: number, revertedSold?: number, revertedRevenue?: number,
   ) {
     setSales((prev) => prev.map((s) => s.id === updatedSale.id ? updatedSale : s));
     if (sizeId !== undefined && sold !== undefined && revenue !== undefined) {
       onProductUpdated(sizeId, sold, revenue);
+    }
+    if (revertedSizeId !== undefined && revertedSold !== undefined && revertedRevenue !== undefined) {
+      onProductUpdated(revertedSizeId, revertedSold, revertedRevenue);
     }
     setEditSale(null);
   }
