@@ -104,11 +104,7 @@ function downloadInventoryExcel(products: ProductData[]) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [products,    setProducts]    = useState<ProductData[]>([]);
-  const [viewMode,      setViewMode]      = useState<"inventory" | "sales">(() =>
-    typeof window !== "undefined"
-      ? (localStorage.getItem("gucha_viewMode") as "inventory" | "sales") ?? "inventory"
-      : "inventory"
-  );
+  const [viewMode,      setViewMode]      = useState<"inventory" | "sales">("inventory");
   const [inventoryView, setInventoryView] = useState<"cards" | "table">("cards");
   const [brands,        setBrands]        = useState<BrandData[]>([]);
   const [filters,     setFilters]     = useState<Filters>(defaultFilters);
@@ -172,6 +168,11 @@ export default function HomePage() {
     const res  = await fetch(`/api/products${q ? `?search=${encodeURIComponent(q)}` : ""}`);
     const data = await res.json();
     setProducts(Array.isArray(data) ? data : []);
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("gucha_viewMode") as "inventory" | "sales" | null;
+    if (saved === "sales") setViewMode("sales");
   }, []);
 
   useEffect(() => { localStorage.setItem("gucha_viewMode", viewMode); }, [viewMode]);
