@@ -318,7 +318,7 @@ export default function HomePage() {
   }
 
   async function handleFreeSale(
-    product: string, brand: string, size: string,
+    product: string, size: string,
     qty: number, price: number, buyer: string, note: string,
   ) {
     await fetch("/api/sales", {
@@ -327,7 +327,7 @@ export default function HomePage() {
       body: JSON.stringify({
         quantity: qty, pricePerPair: price,
         buyerName: buyer || null, note: note || null,
-        customProduct: product, customBrand: brand || null, customSize: size,
+        customProduct: product, customSize: size,
       }),
     });
     setFreeSaleOpen(false);
@@ -617,7 +617,7 @@ export default function HomePage() {
                 <div className="flex justify-end mb-4">
                   <button
                     onClick={() => setFreeSaleOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0d0d0d] border border-gucha-border text-gucha-muted text-[11px] font-bold hover:text-white hover:border-gucha-subtle/60 transition-all"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-gradient text-white text-[11px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-red-glow"
                   >
                     + Venta libre
                   </button>
@@ -725,7 +725,7 @@ export default function HomePage() {
               <div className="flex justify-end mb-3">
                 <button
                   onClick={() => setFreeSaleOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0d0d0d] border border-gucha-border text-gucha-muted text-[11px] font-bold hover:text-white hover:border-gucha-subtle/60 transition-all"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-gradient text-white text-[11px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-red-glow"
                 >
                   + Venta libre
                 </button>

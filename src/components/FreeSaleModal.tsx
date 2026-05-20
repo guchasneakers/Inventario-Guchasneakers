@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 
 interface Props {
-  onSell:  (product: string, brand: string, size: string, qty: number, price: number, buyer: string, note: string) => Promise<void>;
+  onSell:  (product: string, size: string, qty: number, price: number, buyer: string, note: string) => Promise<void>;
   onClose: () => void;
 }
 
 export default function FreeSaleModal({ onSell, onClose }: Props) {
   const [product, setProduct] = useState("");
-  const [brand,   setBrand]   = useState("");
   const [size,    setSize]    = useState("");
   const [qty,     setQty]     = useState(1);
   const [price,   setPrice]   = useState(0);
@@ -34,7 +33,7 @@ export default function FreeSaleModal({ onSell, onClose }: Props) {
     setSaving(true);
     setError("");
     try {
-      await onSell(product.trim(), brand.trim(), size.trim(), safeQty, safePrice, buyer.trim(), note.trim());
+      await onSell(product.trim(), size.trim(), safeQty, safePrice, buyer.trim(), note.trim());
     } catch {
       setError("Error al registrar la venta");
       setSaving(false);
@@ -80,30 +79,18 @@ export default function FreeSaleModal({ onSell, onClose }: Props) {
             />
           </div>
 
-          {/* brand + size row */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Marca</label>
-              <input
-                type="text"
-                placeholder="Ej: Nike"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-gucha-border rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"
-              />
-            </div>
-            <div className="w-24">
-              <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
-                Size <span className="text-gucha-red normal-case tracking-normal">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: 10"
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-gucha-border rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"
-              />
-            </div>
+          {/* size */}
+          <div>
+            <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
+              Size <span className="text-gucha-red normal-case tracking-normal">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Ej: 10"
+              value={size}
+              onChange={(e) => setSize(e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-gucha-border rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"
+            />
           </div>
 
           {/* qty */}
