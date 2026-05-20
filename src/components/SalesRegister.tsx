@@ -668,24 +668,25 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
     });
     const topModels = [...modelMap.values()].sort((a, b) => b.revenue - a.revenue);
 
-    const topHeaders = ["#", "Modelo", "Marca", "Ventas", "Pares vendidos", "Total cobrado"];
-    const topRows    = topModels.map((m, i) => [i + 1, m.name, m.brand, m.sales, m.pairs, m.revenue]);
+    const topHeaders = ["#", "Producto", "Cantidad", "Total cobrado"];
+    const topRows    = topModels.map((m, i) => {
+      const product = m.brand ? `${m.brand} — ${m.name}` : m.name;
+      return [i + 1, product, m.pairs, m.revenue];
+    });
     const wsTop      = XLSX.utils.aoa_to_sheet([topHeaders, ...topRows]);
     wsTop["!cols"]   = [
       { wch: 5  },
-      { wch: 32 },
-      { wch: 14 },
-      { wch: 9  },
-      { wch: 14 },
+      { wch: 40 },
+      { wch: 10 },
       { wch: 14 },
     ];
     for (let r = 1; r <= topRows.length; r++) {
-      const cellRef = `F${r + 1}`;
+      const cellRef = `D${r + 1}`;
       if (wsTop[cellRef] && typeof wsTop[cellRef].v === "number") {
         wsTop[cellRef].z = '"$"#,##0.00';
       }
     }
-    XLSX.utils.book_append_sheet(wb, wsTop, "Top Modelos");
+    XLSX.utils.book_append_sheet(wb, wsTop, "Top Productos");
 
     const fileName = `reporte-ventas-gucha-${label.replace(/[\s/→]+/g, "-").toLowerCase()}.xlsx`;
     XLSX.writeFile(wb, fileName);
