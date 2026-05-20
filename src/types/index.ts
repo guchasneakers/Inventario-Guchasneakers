@@ -41,18 +41,21 @@ export type SizeFormEntry = {
 };
 
 export interface SaleRecord {
-  id:           number;
-  sizeId:       number;
-  quantity:     number;
-  pricePerPair: number;
-  buyerName:    string | null;
-  note:         string | null;
-  createdAt:    string;
+  id:            number;
+  sizeId:        number | null;
+  quantity:      number;
+  pricePerPair:  number;
+  buyerName:     string | null;
+  note:          string | null;
+  createdAt:     string;
+  customProduct: string | null;
+  customBrand:   string | null;
+  customSize:    string | null;
   size?: {
     number:    string;
     productId: number;
     product?:  { id: number; name: string; modelNum: string; brand?: { name: string } | null };
-  };
+  } | null;
 }
 
 export type ProductFormData = {

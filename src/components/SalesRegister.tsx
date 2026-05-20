@@ -48,9 +48,9 @@ async function generateSaleInvoice(sale: SaleRecord) {
   const logoSrc    = logoBase64 || (window.location.origin + "/logo.png");
   const dateStr    = new Intl.DateTimeFormat("es", { dateStyle: "long" }).format(new Date(sale.createdAt));
   const total      = sale.quantity * sale.pricePerPair;
-  const productName  = sale.size?.product?.name ?? "Producto";
-  const brand        = sale.size?.product?.brand?.name ?? "";
-  const sizeNumber   = sale.size?.number ?? "—";
+  const productName  = sale.size?.product?.name ?? sale.customProduct ?? "Producto";
+  const brand        = sale.size?.product?.brand?.name ?? sale.customBrand ?? "";
+  const sizeNumber   = sale.size?.number ?? sale.customSize ?? "—";
 
   // WhatsApp text
   const waText = encodeURIComponent(
@@ -189,7 +189,7 @@ async function generateSaleInvoice(sale: SaleRecord) {
 interface EditSaleModalProps {
   sale: SaleRecord;
   onClose: () => void;
-  onSaved: (updatedSale: SaleRecord, sizeId: number, sold: number, revenue: number) => void;
+  onSaved: (updatedSale: SaleRecord, sizeId?: number, sold?: number, revenue?: number) => void;
 }
 
 function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
@@ -223,7 +223,7 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
         buyerName: buyerName || null,
         note:      note      || null,
       };
-      onSaved(updatedSale, data.updatedSize.id, data.updatedSize.sold, data.updatedSize.revenue);
+      onSaved(updatedSale, data.updatedSize?.id, data.updatedSize?.sold, data.updatedSize?.revenue);
     } catch {
       setError("Error de red");
       setSaving(false);
@@ -347,12 +347,14 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
 
   function handleEditSaved(
     updatedSale: SaleRecord,
-    sizeId: number,
-    sold: number,
-    revenue: number,
+    sizeId?: number,
+    sold?: number,
+    revenue?: number,
   ) {
     setSales((prev) => prev.map((s) => s.id === updatedSale.id ? updatedSale : s));
-    onProductUpdated(sizeId, sold, revenue);
+    if (sizeId !== undefined && sold !== undefined && revenue !== undefined) {
+      onProductUpdated(sizeId, sold, revenue);
+    }
     setEditSale(null);
   }
 
@@ -402,11 +404,16 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
   // ── Apply both filters ───────────────────────────────────────────────────
   const byDate   = filterByDate(sales);
   const filtered = search
-    ? byDate.filter((s) =>
-        s.buyerName?.toLowerCase().includes(search.toLowerCase()) ||
-        s.size?.product?.name.toLowerCase().includes(search.toLowerCase()) ||
-        String(s.id).includes(search)
-      )
+    ? byDate.filter((s) => {
+        const q = search.toLowerCase();
+        return (
+          s.buyerName?.toLowerCase().includes(q) ||
+          s.size?.product?.name?.toLowerCase().includes(q) ||
+          s.customProduct?.toLowerCase().includes(q) ||
+          s.customBrand?.toLowerCase().includes(q) ||
+          String(s.id).includes(q)
+        );
+      })
     : byDate;
 
   const totalRevenue = filtered.reduce((a, s) => a + s.quantity * s.pricePerPair, 0);
@@ -443,9 +450,9 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
     const rows = filtered.map((s) => [
       s.id,
       fmt(s.createdAt),
-      s.size?.product?.brand?.name ?? "",
-      s.size?.product?.name        ?? "",
-      s.size?.number               ?? "",
+      s.size?.product?.brand?.name ?? s.customBrand   ?? "",
+      s.size?.product?.name        ?? s.customProduct ?? "",
+      s.size?.number               ?? s.customSize    ?? "",
       s.buyerName                  ?? "",
       s.quantity,
       s.pricePerPair,
@@ -485,8 +492,8 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
     // ── Sheet 3: Top modelos ─────────────────────────────────────────────
     const modelMap = new Map<string, { name: string; brand: string; pairs: number; revenue: number; sales: number }>();
     filtered.forEach((s) => {
-      const key   = s.size?.product?.name ?? "Desconocido";
-      const brand = s.size?.product?.brand?.name ?? "";
+      const key   = s.size?.product?.name ?? s.customProduct ?? "Desconocido";
+      const brand = s.size?.product?.brand?.name ?? s.customBrand ?? "";
       if (!modelMap.has(key)) modelMap.set(key, { name: key, brand, pairs: 0, revenue: 0, sales: 0 });
       const m = modelMap.get(key)!;
       m.pairs   += s.quantity;
@@ -656,10 +663,20 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
                             )}
                             <p className="font-semibold text-white truncate">{sale.size.product.name}</p>
                           </div>
+                        ) : sale.customProduct ? (
+                          <div>
+                            <div className="flex items-center gap-1 mb-0.5">
+                              {sale.customBrand && (
+                                <p className="text-[8px] font-bold text-gucha-red tracking-widest uppercase">{sale.customBrand}</p>
+                              )}
+                              <span className="text-[7px] font-bold text-gucha-muted/60 border border-gucha-border rounded px-1 uppercase tracking-wider">libre</span>
+                            </div>
+                            <p className="font-semibold text-white truncate">{sale.customProduct}</p>
+                          </div>
                         ) : <span className="text-gucha-muted">—</span>}
                       </td>
                       <td className="px-3 py-3 text-center">
-                        <span className="font-bold text-white">{sale.size?.number ?? "—"}</span>
+                        <span className="font-bold text-white">{sale.size?.number ?? sale.customSize ?? "—"}</span>
                       </td>
                       <td className="px-3 py-3 max-w-[120px]">
                         <span className={`${sale.buyerName ? "text-white" : "text-gucha-muted italic"} truncate block`}>

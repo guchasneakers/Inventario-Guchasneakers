@@ -44,14 +44,17 @@ model Size {
 }
 
 model Sale {
-  id           Int      @id @default(autoincrement())
-  sizeId       Int
-  size         Size     @relation(fields: [sizeId], references: [id], onDelete: Cascade)
-  quantity     Int
-  pricePerPair Float
-  buyerName    String?
-  note         String?
-  createdAt    DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  sizeId        Int?
+  size          Size?    @relation(fields: [sizeId], references: [id], onDelete: SetNull)
+  customProduct String?
+  customBrand   String?
+  customSize    String?
+  quantity      Int
+  pricePerPair  Float
+  buyerName     String?
+  note          String?
+  createdAt     DateTime @default(now())
 
   @@index([sizeId])
 }

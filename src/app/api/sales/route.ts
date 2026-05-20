@@ -34,34 +34,59 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/sales  { sizeId, quantity, pricePerPair, buyerName?, note? }
+//              or  { customProduct, customBrand?, customSize, quantity, pricePerPair, buyerName?, note? }
 export async function POST(req: NextRequest) {
   if (!(await isAdminRequest())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   try {
-    const { sizeId, quantity, pricePerPair, buyerName, note } = await req.json();
+    const { sizeId, quantity, pricePerPair, buyerName, note, customProduct, customBrand, customSize } = await req.json();
 
-    if (!sizeId || !quantity || pricePerPair == null) {
+    if (!quantity || pricePerPair == null) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
     }
 
-    const size = await prisma.size.findUnique({ where: { id: Number(sizeId) } });
-    if (!size) return NextResponse.json({ error: "Talla no encontrada" }, { status: 404 });
+    const qty   = Math.max(1, Number(quantity));
+    const price = Math.max(0, Number(pricePerPair));
 
-    const qty       = Math.max(1, Number(quantity));
-    const price     = Math.max(0, Number(pricePerPair));
-    const newSold   = Math.min(size.sold + qty, size.quantity);
-    const newRevenue = size.revenue + qty * price;
+    // Venta vinculada a inventario
+    if (sizeId) {
+      const size = await prisma.size.findUnique({ where: { id: Number(sizeId) } });
+      if (!size) return NextResponse.json({ error: "Talla no encontrada" }, { status: 404 });
 
-    const [sale] = await prisma.$transaction([
-      prisma.sale.create({
-        data: { sizeId: Number(sizeId), quantity: qty, pricePerPair: price, buyerName: buyerName?.trim() || null, note: note?.trim() || null },
-        ...sizeInclude,
-      }),
-      prisma.size.update({ where: { id: Number(sizeId) }, data: { sold: newSold, revenue: newRevenue } }),
-    ]);
+      const newSold    = Math.min(size.sold + qty, size.quantity);
+      const newRevenue = size.revenue + qty * price;
 
-    return NextResponse.json({ sale, updatedSize: { id: Number(sizeId), sold: newSold, revenue: newRevenue } }, { status: 201 });
+      const [sale] = await prisma.$transaction([
+        prisma.sale.create({
+          data: { sizeId: Number(sizeId), quantity: qty, pricePerPair: price, buyerName: buyerName?.trim() || null, note: note?.trim() || null },
+          ...sizeInclude,
+        }),
+        prisma.size.update({ where: { id: Number(sizeId) }, data: { sold: newSold, revenue: newRevenue } }),
+      ]);
+
+      return NextResponse.json({ sale, updatedSize: { id: Number(sizeId), sold: newSold, revenue: newRevenue } }, { status: 201 });
+    }
+
+    // Venta libre (producto fuera de inventario)
+    if (!customProduct?.trim() || !customSize?.trim()) {
+      return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
+    }
+
+    const sale = await prisma.sale.create({
+      data: {
+        quantity: qty,
+        pricePerPair: price,
+        buyerName:     buyerName?.trim()     || null,
+        note:          note?.trim()          || null,
+        customProduct: customProduct.trim(),
+        customBrand:   customBrand?.trim()   || null,
+        customSize:    customSize.trim(),
+      },
+      ...sizeInclude,
+    });
+
+    return NextResponse.json({ sale, updatedSize: null }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Error al registrar venta" }, { status: 500 });
   }

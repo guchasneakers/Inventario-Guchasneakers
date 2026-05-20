@@ -13,7 +13,8 @@ import StockTable       from "@/components/StockTable";
 import MobileStockList  from "@/components/MobileStockList";
 import SalesRegister    from "@/components/SalesRegister";
 import FilterBar, { defaultFilters, type Filters } from "@/components/FilterBar";
-import BulkSaleModal from "@/components/BulkSaleModal";
+import BulkSaleModal  from "@/components/BulkSaleModal";
+import FreeSaleModal  from "@/components/FreeSaleModal";
 import type { AdminSelectedSize, BrandData, ProductData, ProductFormData, SaleLine, Stats as StatsType } from "@/types";
 
 function computeStats(products: ProductData[], brands: BrandData[]): StatsType {
@@ -117,6 +118,7 @@ export default function HomePage() {
   const [toast,          setToast]          = useState("");
   const [adminSelection, setAdminSelection] = useState<Record<number, AdminSelectedSize>>({});
   const [adminSaleOpen,  setAdminSaleOpen]  = useState(false);
+  const [freeSaleOpen,   setFreeSaleOpen]   = useState(false);
 
   // { sizeId → { productName, sizeNumber } }
   const [selection, setSelection] = useState<Record<number, { productName: string; sizeNumber: string }>>({});
@@ -313,6 +315,23 @@ export default function HomePage() {
       if (prev[sizeId]) { const n = { ...prev }; delete n[sizeId]; return n; }
       return { ...prev, [sizeId]: { productId, productName: product.name, brand: product.brand?.name ?? null, sizeId, sizeNumber: size.number, maxQty: size.quantity - size.sold, listPrice: product.price } };
     });
+  }
+
+  async function handleFreeSale(
+    product: string, brand: string, size: string,
+    qty: number, price: number, buyer: string, note: string,
+  ) {
+    await fetch("/api/sales", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quantity: qty, pricePerPair: price,
+        buyerName: buyer || null, note: note || null,
+        customProduct: product, customBrand: brand || null, customSize: size,
+      }),
+    });
+    setFreeSaleOpen(false);
+    showToast("Venta libre registrada ✓");
   }
 
   async function handleAdminBulkSale(lines: SaleLine[]) {
@@ -593,7 +612,19 @@ export default function HomePage() {
 
           {/* ── Ventas ── */}
           {viewMode === "sales" && (
-            <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} />
+            <>
+              {isAdmin && (
+                <div className="flex justify-end mb-4">
+                  <button
+                    onClick={() => setFreeSaleOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0d0d0d] border border-gucha-border text-gucha-muted text-[11px] font-bold hover:text-white hover:border-gucha-subtle/60 transition-all"
+                  >
+                    + Venta libre
+                  </button>
+                </div>
+              )}
+              <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} />
+            </>
           )}
 
           {/* ── Inventario ── */}
@@ -689,7 +720,19 @@ export default function HomePage() {
 
         {/* ── Ventas (mobile) ── */}
         {viewMode === "sales" && (
-          <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} />
+          <>
+            {isAdmin && (
+              <div className="flex justify-end mb-3">
+                <button
+                  onClick={() => setFreeSaleOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0d0d0d] border border-gucha-border text-gucha-muted text-[11px] font-bold hover:text-white hover:border-gucha-subtle/60 transition-all"
+                >
+                  + Venta libre
+                </button>
+              </div>
+            )}
+            <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} />
+          </>
         )}
 
         {/* ── Inventario (mobile) ── */}
@@ -847,6 +890,12 @@ export default function HomePage() {
           items={Object.values(adminSelection)}
           onSell={handleAdminBulkSale}
           onClose={() => { setAdminSaleOpen(false); setAdminSelection({}); }}
+        />
+      )}
+      {freeSaleOpen && isAdmin && (
+        <FreeSaleModal
+          onSell={handleFreeSale}
+          onClose={() => setFreeSaleOpen(false)}
         />
       )}
 
