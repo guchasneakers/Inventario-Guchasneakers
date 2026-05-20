@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
+import ImageUpload from "@/components/ImageUpload";
 import type { SaleRecord } from "@/types";
 
 interface Props {
@@ -207,18 +208,22 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
   const [pricePerPair, setPricePerPair] = useState(sale.pricePerPair);
   const [buyerName,    setBuyerName]    = useState(sale.buyerName ?? "");
   const [note,         setNote]         = useState(sale.note ?? "");
+  const [imageUrl,     setImageUrl]     = useState(sale.customImageUrl ?? "");
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState("");
+  const isFreeSale = sale.sizeId === null;
 
   async function handleSave() {
     if (saving) return;
     setSaving(true);
     setError("");
     try {
+      const body: Record<string, unknown> = { quantity, pricePerPair, buyerName, note };
+      if (isFreeSale) body.customImageUrl = imageUrl;
       const res = await fetch(`/api/sales/${sale.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity, pricePerPair, buyerName, note }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -230,8 +235,9 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
         ...sale,
         quantity,
         pricePerPair,
-        buyerName: buyerName || null,
-        note:      note      || null,
+        buyerName:      buyerName || null,
+        note:           note      || null,
+        ...(isFreeSale && { customImageUrl: imageUrl || null }),
       };
       onSaved(updatedSale, data.updatedSize?.id, data.updatedSize?.sold, data.updatedSize?.revenue);
     } catch {
@@ -298,6 +304,16 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
               onChange={(e) => setNote(e.target.value)}
               className="w-full bg-gucha-dark border border-gucha-border rounded-xl px-3.5 py-2 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"/>
           </div>
+
+          {/* Image — solo ventas libres */}
+          {isFreeSale && (
+            <div>
+              <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
+                Foto <span className="text-gucha-subtle normal-case tracking-normal">(opcional)</span>
+              </label>
+              <ImageUpload currentUrl={imageUrl} onChange={setImageUrl} />
+            </div>
+          )}
 
           {/* Total preview */}
           <div className="flex items-center justify-between pt-1">
