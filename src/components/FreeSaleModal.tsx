@@ -68,7 +68,7 @@ export default function FreeSaleModal({ onSell, onClose }: Props) {
           {/* product name */}
           <div>
             <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
-              Modelo <span className="text-gucha-red normal-case tracking-normal">*</span>
+              Producto <span className="text-gucha-red normal-case tracking-normal">*</span>
             </label>
             <input
               type="text"
@@ -95,7 +95,7 @@ export default function FreeSaleModal({ onSell, onClose }: Props) {
 
           {/* qty */}
           <div>
-            <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Pares vendidos</label>
+            <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Cantidad</label>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -117,7 +117,7 @@ export default function FreeSaleModal({ onSell, onClose }: Props) {
 
           {/* price */}
           <div>
-            <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Precio por par</label>
+            <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Precio</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gucha-muted font-bold">$</span>
               <input
