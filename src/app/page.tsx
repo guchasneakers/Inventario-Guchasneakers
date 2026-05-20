@@ -624,7 +624,7 @@ export default function HomePage() {
           {viewMode === "sales" && (
             <>
               {isAdmin && (
-                <div className="flex items-center justify-end gap-2 mb-4">
+                <div className="flex items-center justify-between gap-2 mb-4">
                   <button
                     onClick={() => setSalesEditMode((v) => !v)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
@@ -746,7 +746,7 @@ export default function HomePage() {
         {viewMode === "sales" && (
           <>
             {isAdmin && (
-              <div className="flex items-center justify-end gap-2 mb-3">
+              <div className="flex items-center justify-between gap-2 mb-3">
                 <button
                   onClick={() => setSalesEditMode((v) => !v)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
