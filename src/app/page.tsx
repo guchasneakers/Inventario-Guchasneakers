@@ -118,7 +118,8 @@ export default function HomePage() {
   const [toast,          setToast]          = useState("");
   const [adminSelection, setAdminSelection] = useState<Record<number, AdminSelectedSize>>({});
   const [adminSaleOpen,  setAdminSaleOpen]  = useState(false);
-  const [freeSaleOpen,   setFreeSaleOpen]   = useState(false);
+  const [freeSaleOpen,      setFreeSaleOpen]      = useState(false);
+  const [salesRefreshKey,   setSalesRefreshKey]   = useState(0);
 
   // { sizeId → { productName, sizeNumber } }
   const [selection, setSelection] = useState<Record<number, { productName: string; sizeNumber: string }>>({});
@@ -331,6 +332,7 @@ export default function HomePage() {
       }),
     });
     setFreeSaleOpen(false);
+    setSalesRefreshKey((k) => k + 1);
     showToast("Venta libre registrada ✓");
   }
 
@@ -623,7 +625,7 @@ export default function HomePage() {
                   </button>
                 </div>
               )}
-              <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} />
+              <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} refreshTrigger={salesRefreshKey} />
             </>
           )}
 

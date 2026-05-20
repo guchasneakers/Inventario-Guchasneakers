@@ -7,6 +7,7 @@ import type { SaleRecord } from "@/types";
 interface Props {
   onRevert:          (saleId: number) => Promise<void>;
   onProductUpdated:  (sizeId: number, sold: number, revenue: number) => void;
+  refreshTrigger?:   number;
 }
 
 type DateMode = "all" | "this-month" | "last-month" | "custom";
@@ -315,7 +316,7 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
+export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigger }: Props) {
   const [sales,     setSales]     = useState<SaleRecord[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [reverting, setReverting] = useState<number | null>(null);
@@ -335,7 +336,7 @@ export default function SalesRegister({ onRevert, onProductUpdated }: Props) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshTrigger]);
 
   async function handleRevert(sale: SaleRecord) {
     if (!confirm(`¿Revertir la venta #${sale.id}?`)) return;
