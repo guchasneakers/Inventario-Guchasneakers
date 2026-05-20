@@ -8,6 +8,7 @@ interface Props {
   onRevert:          (saleId: number) => Promise<void>;
   onProductUpdated:  (sizeId: number, sold: number, revenue: number) => void;
   refreshTrigger?:   number;
+  editMode?:         boolean;
 }
 
 type DateMode = "all" | "this-month" | "last-month" | "custom";
@@ -52,6 +53,7 @@ async function generateSaleInvoice(sale: SaleRecord) {
   const productName  = sale.size?.product?.name ?? sale.customProduct ?? "Producto";
   const brand        = sale.size?.product?.brand?.name ?? sale.customBrand ?? "";
   const sizeNumber   = sale.size?.number ?? sale.customSize ?? "—";
+  const imageUrl     = sale.size?.product?.imageUrl ?? sale.customImageUrl ?? "";
 
   // WhatsApp text
   const waText = encodeURIComponent(
@@ -64,7 +66,12 @@ async function generateSaleInvoice(sale: SaleRecord) {
   const waUrl = `https://wa.me/?text=${waText}`;
 
   const row = `<tr>
-    <td>${brand ? `<div class="brand">${brand}</div>` : ""}${productName}</td>
+    <td style="vertical-align:middle;padding:8px;">
+      ${imageUrl ? `<img src="${imageUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;display:block;" crossorigin="anonymous"/>` : ""}
+    </td>
+    <td style="vertical-align:middle;">
+      ${brand ? `<div class="brand">${brand}</div>` : ""}${productName}
+    </td>
     <td class="center">${sizeNumber}</td>
     <td class="center">${sale.quantity}</td>
     <td class="right">$${sale.pricePerPair.toFixed(2)}</td>
@@ -119,8 +126,8 @@ async function generateSaleInvoice(sale: SaleRecord) {
       <div class="meta-block"><div class="meta-label">Comprador</div><div><strong>${sale.buyerName || "—"}</strong></div>${sale.note ? `<div style="font-size:12px;color:#777;margin-top:4px">${sale.note}</div>` : ""}</div>
       <div class="meta-block" style="text-align:right"><div class="meta-label">Venta #${sale.id} · Fecha</div><div>${dateStr}</div></div>
     </div>
-    <table><thead><tr><th>Modelo</th><th class="center">Size</th><th class="center">Cant.</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead>
-    <tbody>${row}<tr class="total-row"><td colspan="4" class="total-label">Total</td><td class="total-value">$${total.toFixed(2)}</td></tr></tbody></table>
+    <table><thead><tr><th style="width:80px"></th><th>Producto</th><th class="center">Size</th><th class="center">Cant.</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead>
+    <tbody>${row}<tr class="total-row"><td></td><td colspan="4" class="total-label">Total</td><td class="total-value">$${total.toFixed(2)}</td></tr></tbody></table>
     <footer><p style="font-size:13px;font-weight:bold;color:#333">¡Gracias por tu compra!</p><p style="font-size:11px;color:#aaa;margin-top:4px">Gucha Sneakers · Envío gratis a todo USA</p></footer>
   </div>
   <script>
@@ -179,12 +186,14 @@ async function generateSaleInvoice(sale: SaleRecord) {
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     }
+
   <\/script>
   </body></html>`;
 
   const win = window.open("", "_blank");
   if (win) { win.document.write(html); win.document.close(); }
 }
+
 
 // ── EditSaleModal ─────────────────────────────────────────────────────────────
 interface EditSaleModalProps {
@@ -316,7 +325,7 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigger }: Props) {
+export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigger, editMode = false }: Props) {
   const [sales,     setSales]     = useState<SaleRecord[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [reverting, setReverting] = useState<number | null>(null);
@@ -636,15 +645,15 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
                 <thead>
                   <tr className="border-b border-gucha-border/60">
                     <th className="text-left px-4 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">#</th>
+                    <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Acción</th>
                     <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Fecha</th>
-                    <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Modelo</th>
+                    <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Producto</th>
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Size</th>
                     <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Cliente</th>
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Pares</th>
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">$/par</th>
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-green-light/70 tracking-widest uppercase">Total</th>
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Nota</th>
-                    <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Acción</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -652,6 +661,35 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
                     <tr key={sale.id} className="border-b border-gucha-border/20 last:border-0 hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3">
                         <span className="text-[10px] font-bold text-gucha-muted">#{sale.id}</span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => generateSaleInvoice(sale)}
+                            title="Ver/imprimir factura"
+                            className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors whitespace-nowrap"
+                          >
+                            📄
+                          </button>
+                          {editMode && (
+                            <>
+                              <button
+                                onClick={() => setEditSale(sale)}
+                                title="Editar venta"
+                                className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-white hover:border-gucha-subtle/60 transition-colors whitespace-nowrap"
+                              >
+                                ✎
+                              </button>
+                              <button
+                                onClick={() => handleRevert(sale)}
+                                disabled={reverting === sale.id}
+                                className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-red-light hover:border-gucha-red/40 disabled:opacity-40 transition-colors whitespace-nowrap"
+                              >
+                                {reverting === sale.id ? "…" : "Revertir"}
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap text-gucha-subtle">{fmt(sale.createdAt)}</td>
                       <td className="px-3 py-3 max-w-[160px]">
@@ -692,45 +730,17 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
                       <td className="px-3 py-3 max-w-[100px]">
                         <span className="text-gucha-muted truncate block">{sale.note || "—"}</span>
                       </td>
-                      <td className="px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {/* Invoice */}
-                          <button
-                            onClick={() => generateSaleInvoice(sale)}
-                            title="Ver/imprimir factura"
-                            className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-green-light hover:border-gucha-green/40 transition-colors whitespace-nowrap"
-                          >
-                            📄
-                          </button>
-                          {/* Edit */}
-                          <button
-                            onClick={() => setEditSale(sale)}
-                            title="Editar venta"
-                            className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-white hover:border-gucha-subtle/60 transition-colors whitespace-nowrap"
-                          >
-                            ✎
-                          </button>
-                          {/* Revert */}
-                          <button
-                            onClick={() => handleRevert(sale)}
-                            disabled={reverting === sale.id}
-                            className="px-2.5 py-1 rounded-lg border border-gucha-border text-gucha-muted text-[9px] font-semibold hover:text-gucha-red-light hover:border-gucha-red/40 disabled:opacity-40 transition-colors whitespace-nowrap"
-                          >
-                            {reverting === sale.id ? "…" : "Revertir"}
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-gucha-border/60 bg-white/[0.02]">
-                    <td colSpan={5} className="px-4 py-2.5 text-[9px] text-gucha-muted tracking-widest uppercase">
+                    <td colSpan={6} className="px-4 py-2.5 text-[9px] text-gucha-muted tracking-widest uppercase">
                       {filtered.length} venta{filtered.length !== 1 ? "s" : ""} · {totalPairs} par{totalPairs !== 1 ? "es" : ""}
                     </td>
                     <td /><td />
                     <td className="px-3 py-2.5 text-center font-black text-gucha-green-light">${totalRevenue.toFixed(2)}</td>
-                    <td colSpan={2} />
+                    <td />
                   </tr>
                 </tfoot>
               </table>

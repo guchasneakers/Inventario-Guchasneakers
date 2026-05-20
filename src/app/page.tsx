@@ -104,7 +104,11 @@ function downloadInventoryExcel(products: ProductData[]) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [products,    setProducts]    = useState<ProductData[]>([]);
-  const [viewMode,      setViewMode]      = useState<"inventory" | "sales">("inventory");
+  const [viewMode,      setViewMode]      = useState<"inventory" | "sales">(() =>
+    typeof window !== "undefined"
+      ? (localStorage.getItem("gucha_viewMode") as "inventory" | "sales") ?? "inventory"
+      : "inventory"
+  );
   const [inventoryView, setInventoryView] = useState<"cards" | "table">("cards");
   const [brands,        setBrands]        = useState<BrandData[]>([]);
   const [filters,     setFilters]     = useState<Filters>(defaultFilters);
@@ -120,6 +124,7 @@ export default function HomePage() {
   const [adminSaleOpen,  setAdminSaleOpen]  = useState(false);
   const [freeSaleOpen,      setFreeSaleOpen]      = useState(false);
   const [salesRefreshKey,   setSalesRefreshKey]   = useState(0);
+  const [salesEditMode,     setSalesEditMode]     = useState(false);
 
   // { sizeId → { productName, sizeNumber } }
   const [selection, setSelection] = useState<Record<number, { productName: string; sizeNumber: string }>>({});
@@ -168,6 +173,8 @@ export default function HomePage() {
     const data = await res.json();
     setProducts(Array.isArray(data) ? data : []);
   }, []);
+
+  useEffect(() => { localStorage.setItem("gucha_viewMode", viewMode); }, [viewMode]);
 
   useEffect(() => { fetchProducts().finally(() => setLoading(false)); }, [fetchProducts]);
   useEffect(() => {
@@ -320,7 +327,7 @@ export default function HomePage() {
 
   async function handleFreeSale(
     product: string, size: string,
-    qty: number, price: number, buyer: string, note: string,
+    qty: number, price: number, buyer: string, note: string, imageUrl: string,
   ) {
     await fetch("/api/sales", {
       method: "POST",
@@ -329,6 +336,7 @@ export default function HomePage() {
         quantity: qty, pricePerPair: price,
         buyerName: buyer || null, note: note || null,
         customProduct: product, customSize: size,
+        customImageUrl: imageUrl || null,
       }),
     });
     setFreeSaleOpen(false);
@@ -616,7 +624,21 @@ export default function HomePage() {
           {viewMode === "sales" && (
             <>
               {isAdmin && (
-                <div className="flex justify-end mb-4">
+                <div className="flex items-center justify-end gap-2 mb-4">
+                  <button
+                    onClick={() => setSalesEditMode((v) => !v)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                      salesEditMode
+                        ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-300"
+                        : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white"
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    {salesEditMode ? "Editando" : "Editar"}
+                  </button>
                   <button
                     onClick={() => setFreeSaleOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-gradient text-white text-[11px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-red-glow"
@@ -625,7 +647,7 @@ export default function HomePage() {
                   </button>
                 </div>
               )}
-              <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} refreshTrigger={salesRefreshKey} />
+              <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} refreshTrigger={salesRefreshKey} editMode={salesEditMode} />
             </>
           )}
 
@@ -724,7 +746,21 @@ export default function HomePage() {
         {viewMode === "sales" && (
           <>
             {isAdmin && (
-              <div className="flex justify-end mb-3">
+              <div className="flex items-center justify-end gap-2 mb-3">
+                <button
+                  onClick={() => setSalesEditMode((v) => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                    salesEditMode
+                      ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-300"
+                      : "bg-[#0d0d0d] border-gucha-border text-gucha-muted hover:text-white"
+                  }`}
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  {salesEditMode ? "Editando" : "Editar"}
+                </button>
                 <button
                   onClick={() => setFreeSaleOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-gradient text-white text-[11px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-red-glow"
@@ -733,7 +769,7 @@ export default function HomePage() {
                 </button>
               </div>
             )}
-            <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} />
+            <SalesRegister onRevert={handleRevertSale} onProductUpdated={handleSaleEdited} refreshTrigger={salesRefreshKey} editMode={salesEditMode} />
           </>
         )}
 

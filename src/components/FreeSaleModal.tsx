@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ImageUpload from "@/components/ImageUpload";
 
 interface Props {
-  onSell:  (product: string, size: string, qty: number, price: number, buyer: string, note: string) => Promise<void>;
+  onSell:  (product: string, size: string, qty: number, price: number, buyer: string, note: string, imageUrl: string) => Promise<void>;
   onClose: () => void;
 }
 
 export default function FreeSaleModal({ onSell, onClose }: Props) {
-  const [product, setProduct] = useState("");
-  const [size,    setSize]    = useState("");
+  const [product,  setProduct]  = useState("");
+  const [size,     setSize]     = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [qty,     setQty]     = useState(1);
   const [price,   setPrice]   = useState(0);
   const [buyer,   setBuyer]   = useState("");
@@ -33,7 +35,7 @@ export default function FreeSaleModal({ onSell, onClose }: Props) {
     setSaving(true);
     setError("");
     try {
-      await onSell(product.trim(), size.trim(), safeQty, safePrice, buyer.trim(), note.trim());
+      await onSell(product.trim(), size.trim(), safeQty, safePrice, buyer.trim(), note.trim(), imageUrl);
     } catch {
       setError("Error al registrar la venta");
       setSaving(false);
@@ -91,6 +93,14 @@ export default function FreeSaleModal({ onSell, onClose }: Props) {
               onChange={(e) => setSize(e.target.value)}
               className="w-full bg-[#0d0d0d] border border-gucha-border rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"
             />
+          </div>
+
+          {/* image */}
+          <div>
+            <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
+              Foto <span className="text-gucha-subtle normal-case tracking-normal">(opcional)</span>
+            </label>
+            <ImageUpload currentUrl={imageUrl} onChange={setImageUrl} />
           </div>
 
           {/* qty */}

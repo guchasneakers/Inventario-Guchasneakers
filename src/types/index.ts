@@ -48,13 +48,14 @@ export interface SaleRecord {
   buyerName:     string | null;
   note:          string | null;
   createdAt:     string;
-  customProduct: string | null;
-  customBrand:   string | null;
-  customSize:    string | null;
+  customProduct:  string | null;
+  customBrand:    string | null;
+  customSize:     string | null;
+  customImageUrl: string | null;
   size?: {
     number:    string;
     productId: number;
-    product?:  { id: number; name: string; modelNum: string; brand?: { name: string } | null };
+    product?:  { id: number; name: string; modelNum: string; imageUrl?: string | null; brand?: { name: string } | null };
   } | null;
 }
 

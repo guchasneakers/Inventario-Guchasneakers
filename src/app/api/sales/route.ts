@@ -7,7 +7,7 @@ const sizeInclude = {
     size: {
       include: {
         product: {
-          select: { id: true, name: true, modelNum: true, brand: { select: { name: true } } },
+          select: { id: true, name: true, modelNum: true, imageUrl: true, brand: { select: { name: true } } },
         },
       },
     },
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   try {
-    const { sizeId, quantity, pricePerPair, buyerName, note, customProduct, customBrand, customSize } = await req.json();
+    const { sizeId, quantity, pricePerPair, buyerName, note, customProduct, customBrand, customSize, customImageUrl } = await req.json();
 
     if (!quantity || pricePerPair == null) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
@@ -79,9 +79,10 @@ export async function POST(req: NextRequest) {
         pricePerPair: price,
         buyerName:     buyerName?.trim()     || null,
         note:          note?.trim()          || null,
-        customProduct: customProduct.trim(),
-        customBrand:   customBrand?.trim()   || null,
-        customSize:    customSize.trim(),
+        customProduct:  customProduct.trim(),
+        customBrand:    customBrand?.trim()    || null,
+        customSize:     customSize.trim(),
+        customImageUrl: customImageUrl?.trim() || null,
       },
       ...sizeInclude,
     });

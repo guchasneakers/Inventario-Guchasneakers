@@ -47,9 +47,10 @@ model Sale {
   id            Int      @id @default(autoincrement())
   sizeId        Int?
   size          Size?    @relation(fields: [sizeId], references: [id], onDelete: SetNull)
-  customProduct String?
-  customBrand   String?
-  customSize    String?
+  customProduct  String?
+  customBrand    String?
+  customSize     String?
+  customImageUrl String?
   quantity      Int
   pricePerPair  Float
   buyerName     String?
