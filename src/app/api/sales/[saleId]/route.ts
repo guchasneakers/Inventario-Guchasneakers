@@ -11,12 +11,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { saleId } = await params;
     const body = await req.json();
-    const { quantity, pricePerPair, buyerName, note, customImageUrl } = body as {
+    const { quantity, pricePerPair, buyerName, note, customImageUrl, customProduct, customSize } = body as {
       quantity: number;
       pricePerPair: number;
       buyerName?: string;
       note?: string;
       customImageUrl?: string;
+      customProduct?: string;
+      customSize?: string;
     };
 
     const sale = await prisma.sale.findUnique({
@@ -58,6 +60,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         buyerName:      buyerName      !== undefined ? buyerName      : sale.buyerName,
         note:           note           !== undefined ? note           : sale.note,
         customImageUrl: customImageUrl !== undefined ? (customImageUrl || null) : sale.customImageUrl,
+        customProduct:  customProduct  !== undefined ? (customProduct.trim()  || null) : sale.customProduct,
+        customSize:     customSize     !== undefined ? (customSize.trim()     || null) : sale.customSize,
       },
     });
 

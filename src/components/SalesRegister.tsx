@@ -204,13 +204,15 @@ interface EditSaleModalProps {
 }
 
 function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
-  const [quantity,     setQuantity]     = useState(sale.quantity);
-  const [pricePerPair, setPricePerPair] = useState(sale.pricePerPair);
-  const [buyerName,    setBuyerName]    = useState(sale.buyerName ?? "");
-  const [note,         setNote]         = useState(sale.note ?? "");
-  const [imageUrl,     setImageUrl]     = useState(sale.customImageUrl ?? "");
-  const [saving,       setSaving]       = useState(false);
-  const [error,        setError]        = useState("");
+  const [quantity,       setQuantity]       = useState(sale.quantity);
+  const [pricePerPair,   setPricePerPair]   = useState(sale.pricePerPair);
+  const [buyerName,      setBuyerName]      = useState(sale.buyerName ?? "");
+  const [note,           setNote]           = useState(sale.note ?? "");
+  const [imageUrl,       setImageUrl]       = useState(sale.customImageUrl ?? "");
+  const [customProduct,  setCustomProduct]  = useState(sale.customProduct ?? "");
+  const [customSize,     setCustomSize]     = useState(sale.customSize ?? "");
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState("");
   const isFreeSale = sale.sizeId === null;
 
   async function handleSave() {
@@ -219,7 +221,11 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
     setError("");
     try {
       const body: Record<string, unknown> = { quantity, pricePerPair, buyerName, note };
-      if (isFreeSale) body.customImageUrl = imageUrl;
+      if (isFreeSale) {
+        body.customImageUrl = imageUrl;
+        body.customProduct  = customProduct;
+        body.customSize     = customSize;
+      }
       const res = await fetch(`/api/sales/${sale.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -237,7 +243,11 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
         pricePerPair,
         buyerName:      buyerName || null,
         note:           note      || null,
-        ...(isFreeSale && { customImageUrl: imageUrl || null }),
+        ...(isFreeSale && {
+          customImageUrl: imageUrl       || null,
+          customProduct:  customProduct  || null,
+          customSize:     customSize     || null,
+        }),
       };
       onSaved(updatedSale, data.updatedSize?.id, data.updatedSize?.sold, data.updatedSize?.revenue);
     } catch {
@@ -264,6 +274,29 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
 
         {/* body */}
         <div className="px-5 py-4 space-y-3">
+
+          {/* Campos exclusivos de venta libre */}
+          {isFreeSale && (
+            <>
+              <div>
+                <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
+                  Producto <span className="text-gucha-red normal-case tracking-normal">*</span>
+                </label>
+                <input type="text" placeholder="Ej: Air Force 1 Low" value={customProduct}
+                  onChange={(e) => setCustomProduct(e.target.value)}
+                  className="w-full bg-gucha-dark border border-gucha-border rounded-xl px-3.5 py-2 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"/>
+              </div>
+              <div>
+                <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
+                  Size <span className="text-gucha-red normal-case tracking-normal">*</span>
+                </label>
+                <input type="text" placeholder="Ej: 10" value={customSize}
+                  onChange={(e) => setCustomSize(e.target.value)}
+                  className="w-full bg-gucha-dark border border-gucha-border rounded-xl px-3.5 py-2 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"/>
+              </div>
+            </>
+          )}
+
           {/* Qty */}
           <div>
             <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">Cantidad</label>
