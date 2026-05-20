@@ -609,22 +609,26 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
     XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
 
     // ── Sheet 2: Detalle de ventas ───────────────────────────────────────
-    const headers = ["#", "Fecha", "Marca", "Modelo", "Size", "Cliente", "Pares", "$/par", "Total", "Nota"];
-    const rows = filtered.map((s) => [
-      s.id,
-      fmt(s.createdAt),
-      s.size?.product?.brand?.name ?? s.customBrand   ?? "",
-      s.size?.product?.name        ?? s.customProduct ?? "",
-      s.size?.number               ?? s.customSize    ?? "",
-      s.buyerName                  ?? "",
-      s.quantity,
-      s.pricePerPair,
-      s.quantity * s.pricePerPair,
-      s.note                       ?? "",
-    ]);
+    const headers = ["#", "Fecha", "Producto", "Size", "Cliente", "Pares", "Precio", "Total", "Nota"];
+    const rows = filtered.map((s) => {
+      const brand   = s.size?.product?.brand?.name ?? s.customBrand   ?? "";
+      const name    = s.size?.product?.name        ?? s.customProduct ?? "";
+      const product = brand ? `${brand} — ${name}` : name;
+      return [
+        s.id,
+        fmt(s.createdAt),
+        product,
+        s.size?.number ?? s.customSize    ?? "",
+        s.buyerName    ?? "",
+        s.quantity,
+        s.pricePerPair,
+        s.quantity * s.pricePerPair,
+        s.note         ?? "",
+      ];
+    });
 
     const totalsRow: (string | number)[] = [
-      "", "TOTAL", "", "", "", "",
+      "", "TOTAL", "", "", "",
       totalPairs, "", totalRevenue, "",
     ];
 
@@ -632,8 +636,7 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
     wsDetalle["!cols"] = [
       { wch: 6  },
       { wch: 20 },
-      { wch: 14 },
-      { wch: 30 },
+      { wch: 36 },
       { wch: 7  },
       { wch: 18 },
       { wch: 7  },
@@ -643,7 +646,7 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
     ];
     const range = XLSX.utils.decode_range(wsDetalle["!ref"] ?? "A1");
     for (let r = 1; r <= range.e.r; r++) {
-      ["H", "I"].forEach((col) => {
+      ["G", "H"].forEach((col) => {
         const cellRef = `${col}${r + 1}`;
         if (wsDetalle[cellRef] && typeof wsDetalle[cellRef].v === "number") {
           wsDetalle[cellRef].z = '"$"#,##0.00';
@@ -804,7 +807,7 @@ export default function SalesRegister({ onRevert, onProductUpdated, refreshTrigg
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Size</th>
                     <th className="text-left px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Cliente</th>
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Pares</th>
-                    <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">$/par</th>
+                    <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Precio</th>
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-green-light/70 tracking-widest uppercase">Total</th>
                     <th className="text-center px-3 py-3 text-[9px] font-bold text-gucha-muted tracking-widest uppercase">Nota</th>
                   </tr>
