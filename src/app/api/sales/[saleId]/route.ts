@@ -38,8 +38,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           data: {
             quantity,
             pricePerPair,
-            buyerName: buyerName !== undefined ? buyerName : sale.buyerName,
-            note:      note      !== undefined ? note      : sale.note,
+            buyerName:      buyerName      !== undefined ? buyerName                       : sale.buyerName,
+            note:           note           !== undefined ? note                            : sale.note,
+            customImageUrl: customImageUrl !== undefined ? (customImageUrl || null)        : sale.customImageUrl,
           },
         }),
         prisma.size.update({

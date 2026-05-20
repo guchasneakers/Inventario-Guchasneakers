@@ -54,7 +54,7 @@ async function generateSaleInvoice(sale: SaleRecord) {
   const productName  = sale.size?.product?.name ?? sale.customProduct ?? "Producto";
   const brand        = sale.size?.product?.brand?.name ?? sale.customBrand ?? "";
   const sizeNumber   = sale.size?.number ?? sale.customSize ?? "—";
-  const imageUrl     = sale.size?.product?.imageUrl ?? sale.customImageUrl ?? "";
+  const imageUrl     = sale.customImageUrl ?? sale.size?.product?.imageUrl ?? "";
 
   // WhatsApp text
   const waText = encodeURIComponent(
@@ -220,11 +220,10 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
     setSaving(true);
     setError("");
     try {
-      const body: Record<string, unknown> = { quantity, pricePerPair, buyerName, note };
+      const body: Record<string, unknown> = { quantity, pricePerPair, buyerName, note, customImageUrl: imageUrl };
       if (isFreeSale) {
-        body.customImageUrl = imageUrl;
-        body.customProduct  = customProduct;
-        body.customSize     = customSize;
+        body.customProduct = customProduct;
+        body.customSize    = customSize;
       }
       const res = await fetch(`/api/sales/${sale.id}`, {
         method: "PATCH",
@@ -243,10 +242,10 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
         pricePerPair,
         buyerName:      buyerName || null,
         note:           note      || null,
+        customImageUrl: imageUrl  || null,
         ...(isFreeSale && {
-          customImageUrl: imageUrl       || null,
-          customProduct:  customProduct  || null,
-          customSize:     customSize     || null,
+          customProduct: customProduct || null,
+          customSize:    customSize    || null,
         }),
       };
       onSaved(updatedSale, data.updatedSize?.id, data.updatedSize?.sold, data.updatedSize?.revenue);
@@ -338,15 +337,13 @@ function EditSaleModal({ sale, onClose, onSaved }: EditSaleModalProps) {
               className="w-full bg-gucha-dark border border-gucha-border rounded-xl px-3.5 py-2 text-[13px] text-white placeholder-gucha-muted/50 outline-none focus:border-gucha-subtle/60 transition-colors"/>
           </div>
 
-          {/* Image — solo ventas libres */}
-          {isFreeSale && (
-            <div>
-              <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
-                Foto <span className="text-gucha-subtle normal-case tracking-normal">(opcional)</span>
-              </label>
-              <ImageUpload currentUrl={imageUrl} onChange={setImageUrl} />
-            </div>
-          )}
+          {/* Image */}
+          <div>
+            <label className="block text-[9px] text-gucha-muted tracking-widest uppercase mb-1.5">
+              Foto <span className="text-gucha-subtle normal-case tracking-normal">(opcional)</span>
+            </label>
+            <ImageUpload currentUrl={imageUrl} onChange={setImageUrl} />
+          </div>
 
           {/* Total preview */}
           <div className="flex items-center justify-between pt-1">
